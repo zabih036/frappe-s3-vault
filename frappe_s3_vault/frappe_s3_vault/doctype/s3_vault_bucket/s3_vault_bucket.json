@@ -1,0 +1,132 @@
+{
+  "doctype": "DocType",
+  "name": "S3 Vault Bucket",
+  "module": "Frappe S3 Vault",
+  "custom": 0,
+  "is_submittable": 0,
+  "istable": 0,
+  "track_changes": 1,
+  "autoname": "field:bucket_title",
+  "title_field": "bucket_title",
+  "fields": [
+    {
+      "fieldname": "bucket_title",
+      "label": "Bucket Title",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": "1",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "provider_type",
+      "label": "Provider Type",
+      "fieldtype": "Select",
+      "options": "AWS S3\nWasabi\nMinIO\nDigitalOcean Spaces\nCloudflare R2\nCustom",
+      "default": "Wasabi",
+      "reqd": 1
+    },
+    {
+      "fieldname": "bucket_name",
+      "label": "Bucket Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "region",
+      "label": "Region",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "endpoint_url",
+      "label": "Endpoint URL",
+      "fieldtype": "Data",
+      "description": "Example: https://s3.eu-central-1.wasabisys.com"
+    },
+    {
+      "fieldname": "credentials_section",
+      "label": "Credentials",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "access_key",
+      "label": "Access Key",
+      "fieldtype": "Password",
+      "reqd": 1
+    },
+    {
+      "fieldname": "secret_key",
+      "label": "Secret Key",
+      "fieldtype": "Password",
+      "reqd": 1
+    },
+    {
+      "fieldname": "options_section",
+      "label": "Bucket Options",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "base_prefix",
+      "label": "Base Prefix",
+      "fieldtype": "Data",
+      "description": "Optional folder prefix, example: aogc_v16"
+    },
+    {
+      "fieldname": "is_default",
+      "label": "Is Default",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "use_ssl",
+      "label": "Use SSL",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "verify_ssl",
+      "label": "Verify SSL",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "last_connection_status",
+      "label": "Last Connection Status",
+      "fieldtype": "Select",
+      "options": "\nSuccess\nFailed"
+    },
+    {
+      "fieldname": "last_connection_message",
+      "label": "Last Connection Message",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_checked_on",
+      "label": "Last Checked On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "print": 1,
+      "export": 1,
+      "share": 1
+    }
+  ]
+}

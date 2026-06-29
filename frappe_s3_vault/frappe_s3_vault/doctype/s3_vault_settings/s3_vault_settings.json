@@ -1,0 +1,125 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "",
+  "creation": "2026-06-28 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "field_order": [
+    "enabled",
+    "default_bucket",
+    "enable_audit_log",
+    "allow_local_fallback",
+    "column_break_1",
+    "default_url_expiry_seconds",
+    "keep_local_copy_days_default",
+    "global_blocked_extensions",
+    "notes_section",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "default_bucket",
+      "label": "Default Bucket",
+      "fieldtype": "Link",
+      "options": "S3 Vault Bucket",
+      "description": "Fallback bucket when a rule has no bucket selected."
+    },
+    {
+      "fieldname": "enable_audit_log",
+      "label": "Enable Audit Log",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "allow_local_fallback",
+      "label": "Allow Local Fallback On Upload Failure",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "column_break_1",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "default_url_expiry_seconds",
+      "label": "Default URL Expiry Seconds",
+      "fieldtype": "Int",
+      "default": "900"
+    },
+    {
+      "fieldname": "keep_local_copy_days_default",
+      "label": "Keep Local Copy Days Default",
+      "fieldtype": "Int",
+      "default": "7"
+    },
+    {
+      "fieldname": "global_blocked_extensions",
+      "label": "Global Blocked Extensions",
+      "fieldtype": "Small Text",
+      "default": "exe,bat,cmd,sh,php,js,html",
+      "description": "Always blocked for all rules."
+    },
+    {
+      "fieldname": "notes_section",
+      "label": "Notes",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Notes",
+      "fieldtype": "Small Text",
+      "description": "Only global switches are here. Per-DocType controls are in S3 Vault Rule."
+    }
+  ],
+  "grid_page_length": 50,
+  "hide_toolbar": 0,
+  "idx": 0,
+  "image_field": "",
+  "in_create": 0,
+  "is_calendar_and_gantt": 0,
+  "is_submittable": 0,
+  "issingle": 1,
+  "istable": 0,
+  "links": [],
+  "modified": "2026-06-28 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Settings",
+  "naming_rule": "",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0,
+      "report": 1,
+      "export": 1,
+      "import": 1,
+      "share": 1,
+      "print": 1,
+      "email": 1
+    }
+  ],
+  "quick_entry": 0,
+  "read_only": 0,
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1,
+  "track_seen": 0
+}

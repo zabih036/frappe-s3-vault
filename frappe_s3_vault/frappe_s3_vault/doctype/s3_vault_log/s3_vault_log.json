@@ -1,0 +1,185 @@
+{
+  "actions": [],
+  "allow_rename": 1,
+  "autoname": "hash",
+  "creation": "2026-06-28 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "field_order": [
+    "action",
+    "status",
+    "user",
+    "storage_file",
+    "column_break_13",
+    "file",
+    "doctype_name",
+    "document_name",
+    "bucket_name",
+    "object_key",
+    "request_info_section",
+    "ip_address",
+    "user_agent",
+    "request_id",
+    "column_break_14",
+    "started_on",
+    "completed_on",
+    "duration_ms",
+    "error_message",
+    "traceback"
+  ],
+  "fields": [
+    {
+      "fieldname": "action",
+      "label": "Action",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "Upload\nDownload\nPreview\nGenerate URL\nDelete\nSoft Delete\nRestore\nReplace\nMove\nCopy\nHealth Check\nDynamic Field Create\nMigration\nError"
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "Success\nFailed\nPending",
+      "default": "Success"
+    },
+    {
+      "fieldname": "user",
+      "label": "User",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "storage_file",
+      "label": "S3 Vault File",
+      "fieldtype": "Link",
+      "options": "S3 Vault File"
+    },
+    {
+      "fieldname": "column_break_13",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "file",
+      "label": "Frappe File",
+      "fieldtype": "Link",
+      "options": "File"
+    },
+    {
+      "fieldname": "doctype_name",
+      "label": "DocType Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "document_name",
+      "label": "Document Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "bucket_name",
+      "label": "Bucket Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "object_key",
+      "label": "Object Key",
+      "fieldtype": "Text"
+    },
+    {
+      "fieldname": "request_info_section",
+      "label": "Request Info",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "ip_address",
+      "label": "IP Address",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "user_agent",
+      "label": "User Agent",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "request_id",
+      "label": "Request ID",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "column_break_14",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "started_on",
+      "label": "Started On",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "completed_on",
+      "label": "Completed On",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "duration_ms",
+      "label": "Duration MS",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "error_message",
+      "label": "Error Message",
+      "fieldtype": "Text"
+    },
+    {
+      "fieldname": "traceback",
+      "label": "Traceback",
+      "fieldtype": "Code"
+    }
+  ],
+  "grid_page_length": 50,
+  "hide_toolbar": 0,
+  "idx": 0,
+  "image_field": "",
+  "in_create": 0,
+  "is_calendar_and_gantt": 0,
+  "is_submittable": 0,
+  "issingle": 0,
+  "istable": 0,
+  "links": [],
+  "modified": "2026-06-28 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Log",
+  "naming_rule": "",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 0,
+      "create": 0,
+      "delete": 0,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0,
+      "report": 1,
+      "export": 1,
+      "import": 0,
+      "share": 1,
+      "print": 1,
+      "email": 1
+    }
+  ],
+  "quick_entry": 0,
+  "read_only": 0,
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 0,
+  "track_seen": 0,
+  "title_field": "action",
+  "search_fields": "action,status,doctype_name,document_name,bucket_name"
+}

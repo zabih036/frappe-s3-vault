@@ -1,0 +1,346 @@
+{
+  "actions": [],
+  "allow_rename": 1,
+  "autoname": "field:rule_name",
+  "creation": "2026-06-28 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "field_order": [
+    "rule_name",
+    "enabled",
+    "priority",
+    "column_break_5",
+    "reference_doctype",
+    "bucket",
+    "applies_to",
+    "attach_fieldname",
+    "object_path_section",
+    "folder_pattern",
+    "filename_strategy",
+    "column_break_6",
+    "object_key_preview",
+    "per_doctype_s3_file_options_section",
+    "is_private",
+    "require_frappe_permission_check",
+    "generate_presigned_url",
+    "url_expiry_seconds",
+    "column_break_7",
+    "max_file_size_mb",
+    "allowed_extensions",
+    "blocked_extensions",
+    "allowed_mime_types",
+    "actions_section",
+    "allow_download",
+    "allow_preview",
+    "allow_delete_from_s3",
+    "soft_delete_days",
+    "column_break_8",
+    "delete_local_after_upload",
+    "keep_local_copy_days",
+    "background_upload",
+    "enable_versioning",
+    "dynamic_attach_field_section",
+    "create_attach_field",
+    "dynamic_field_label",
+    "dynamic_fieldname",
+    "dynamic_fieldtype",
+    "column_break_9",
+    "insert_after",
+    "custom_field_created",
+    "last_error"
+  ],
+  "fields": [
+    {
+      "fieldname": "rule_name",
+      "label": "Rule Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "priority",
+      "label": "Priority",
+      "fieldtype": "Int",
+      "default": "100"
+    },
+    {
+      "fieldname": "column_break_5",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "reference_doctype",
+      "label": "Reference DocType",
+      "fieldtype": "Link",
+      "options": "DocType",
+      "reqd": 1
+    },
+    {
+      "fieldname": "bucket",
+      "label": "Bucket",
+      "fieldtype": "Link",
+      "options": "S3 Vault Bucket",
+      "reqd": 1
+    },
+    {
+      "fieldname": "applies_to",
+      "label": "Applies To",
+      "fieldtype": "Select",
+      "options": "All Attachments\nSpecific Attach Field\nFile Manager Attachments",
+      "default": "All Attachments"
+    },
+    {
+      "fieldname": "attach_fieldname",
+      "label": "Attach Fieldname",
+      "fieldtype": "Data",
+      "description": "Use when Applies To = Specific Attach Field."
+    },
+    {
+      "fieldname": "object_path_section",
+      "label": "Object Path",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "folder_pattern",
+      "label": "Folder Pattern",
+      "fieldtype": "Data",
+      "default": "{site}/{doctype}/{docname}/{yyyy}/{mm}",
+      "description": "Allowed tokens: {site}, {doctype}, {docname}, {fieldname}, {yyyy}, {mm}, {dd}, {user}"
+    },
+    {
+      "fieldname": "filename_strategy",
+      "label": "Filename Strategy",
+      "fieldtype": "Select",
+      "options": "Original\nHash Prefix\nUUID\nContent Hash",
+      "default": "Hash Prefix"
+    },
+    {
+      "fieldname": "column_break_6",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "object_key_preview",
+      "label": "Object Key Preview",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "per_doctype_s3_file_options_section",
+      "label": "Per DocType S3 File Options",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "is_private",
+      "label": "Private Files",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "require_frappe_permission_check",
+      "label": "Require Frappe Permission Check",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "generate_presigned_url",
+      "label": "Generate Presigned URL",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "url_expiry_seconds",
+      "label": "URL Expiry Seconds",
+      "fieldtype": "Int",
+      "default": "900"
+    },
+    {
+      "fieldname": "column_break_7",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "max_file_size_mb",
+      "label": "Max File Size MB",
+      "fieldtype": "Int",
+      "default": "20"
+    },
+    {
+      "fieldname": "allowed_extensions",
+      "label": "Allowed Extensions",
+      "fieldtype": "Small Text",
+      "description": "Example: pdf,jpg,png,docx,xlsx. Leave blank to allow all except global/rule blocked."
+    },
+    {
+      "fieldname": "blocked_extensions",
+      "label": "Blocked Extensions",
+      "fieldtype": "Small Text",
+      "description": "Extra blocked extensions for this DocType only."
+    },
+    {
+      "fieldname": "allowed_mime_types",
+      "label": "Allowed MIME Types",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "actions_section",
+      "label": "Actions",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "allow_download",
+      "label": "Allow Download",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "allow_preview",
+      "label": "Allow Preview",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "allow_delete_from_s3",
+      "label": "Allow Delete From S3",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "soft_delete_days",
+      "label": "Soft Delete Days",
+      "fieldtype": "Int",
+      "default": "30"
+    },
+    {
+      "fieldname": "column_break_8",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "delete_local_after_upload",
+      "label": "Delete Local After Upload",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "keep_local_copy_days",
+      "label": "Keep Local Copy Days",
+      "fieldtype": "Int",
+      "default": "7"
+    },
+    {
+      "fieldname": "background_upload",
+      "label": "Background Upload",
+      "fieldtype": "Check",
+      "default": "1"
+    },
+    {
+      "fieldname": "enable_versioning",
+      "label": "Enable Versioning",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "dynamic_attach_field_section",
+      "label": "Dynamic Attach Field",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "create_attach_field",
+      "label": "Create Attach Field Dynamically",
+      "fieldtype": "Check",
+      "default": "0"
+    },
+    {
+      "fieldname": "dynamic_field_label",
+      "label": "Dynamic Field Label",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "dynamic_fieldname",
+      "label": "Dynamic Fieldname",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "dynamic_fieldtype",
+      "label": "Dynamic Field Type",
+      "fieldtype": "Select",
+      "options": "Attach\nAttach Image",
+      "default": "Attach"
+    },
+    {
+      "fieldname": "column_break_9",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "insert_after",
+      "label": "Insert After Field",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "custom_field_created",
+      "label": "Custom Field Created",
+      "fieldtype": "Link",
+      "options": "Custom Field",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_error",
+      "label": "Last Error",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    }
+  ],
+  "grid_page_length": 50,
+  "hide_toolbar": 0,
+  "idx": 0,
+  "image_field": "",
+  "in_create": 0,
+  "is_calendar_and_gantt": 0,
+  "is_submittable": 0,
+  "issingle": 0,
+  "istable": 0,
+  "links": [],
+  "modified": "2026-06-28 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Rule",
+  "naming_rule": "By fieldname",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 0,
+      "cancel": 0,
+      "amend": 0,
+      "report": 1,
+      "export": 1,
+      "import": 1,
+      "share": 1,
+      "print": 1,
+      "email": 1
+    }
+  ],
+  "quick_entry": 0,
+  "read_only": 0,
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1,
+  "track_seen": 0,
+  "title_field": "rule_name",
+  "search_fields": "rule_name,reference_doctype,bucket"
+}
