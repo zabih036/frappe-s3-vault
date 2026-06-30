@@ -1,264 +1,252 @@
 {
-  "actions": [],
-  "allow_rename": 1,
-  "autoname": "hash",
-  "creation": "2026-06-28 00:00:00.000000",
-  "doctype": "DocType",
-  "document_type": "Document",
-  "editable_grid": 1,
-  "engine": "InnoDB",
-  "field_order": [
-    "file",
-    "file_url",
-    "attached_to_doctype",
-    "attached_to_name",
-    "attached_to_field",
-    "column_break_10",
-    "rule_used",
-    "bucket",
-    "bucket_name",
-    "object_key",
-    "file_info_section",
-    "original_file_name",
-    "stored_file_name",
-    "file_size",
-    "content_type",
-    "file_extension",
-    "column_break_11",
-    "file_hash",
-    "etag",
-    "version_id",
-    "is_private",
-    "status_section",
-    "status",
-    "uploaded_on",
-    "uploaded_by",
-    "last_accessed_on",
-    "column_break_12",
-    "local_file_url",
-    "local_file_deleted",
-    "deleted_on",
-    "deleted_by",
-    "error_message"
-  ],
-  "fields": [
-    {
-      "fieldname": "file",
-      "label": "Frappe File",
-      "fieldtype": "Link",
-      "options": "File"
-    },
-    {
-      "fieldname": "file_url",
-      "label": "File URL",
-      "fieldtype": "Text"
-    },
-    {
-      "fieldname": "attached_to_doctype",
-      "label": "Attached To DocType",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "attached_to_name",
-      "label": "Attached To Name",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "attached_to_field",
-      "label": "Attached To Field",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "column_break_10",
-      "label": "",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "rule_used",
-      "label": "Rule Used",
-      "fieldtype": "Link",
-      "options": "S3 Vault Rule"
-    },
-    {
-      "fieldname": "bucket",
-      "label": "Bucket",
-      "fieldtype": "Link",
-      "options": "S3 Vault Bucket"
-    },
-    {
-      "fieldname": "bucket_name",
-      "label": "Bucket Name",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "object_key",
-      "label": "Object Key",
-      "fieldtype": "Text",
-      "reqd": 1
-    },
-    {
-      "fieldname": "file_info_section",
-      "label": "File Info",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "original_file_name",
-      "label": "Original File Name",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "stored_file_name",
-      "label": "Stored File Name",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "file_size",
-      "label": "File Size",
-      "fieldtype": "Int"
-    },
-    {
-      "fieldname": "content_type",
-      "label": "Content Type",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "file_extension",
-      "label": "File Extension",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "column_break_11",
-      "label": "",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "file_hash",
-      "label": "File Hash",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "etag",
-      "label": "ETag",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "version_id",
-      "label": "Version ID",
-      "fieldtype": "Data"
-    },
-    {
-      "fieldname": "is_private",
-      "label": "Is Private",
-      "fieldtype": "Check"
-    },
-    {
-      "fieldname": "status_section",
-      "label": "Status",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "status",
-      "label": "Status",
-      "fieldtype": "Select",
-      "options": "Pending\nUploaded\nFailed\nSoft Deleted\nDeleted\nMissing",
-      "default": "Pending"
-    },
-    {
-      "fieldname": "uploaded_on",
-      "label": "Uploaded On",
-      "fieldtype": "Datetime"
-    },
-    {
-      "fieldname": "uploaded_by",
-      "label": "Uploaded By",
-      "fieldtype": "Link",
-      "options": "User"
-    },
-    {
-      "fieldname": "last_accessed_on",
-      "label": "Last Accessed On",
-      "fieldtype": "Datetime"
-    },
-    {
-      "fieldname": "column_break_12",
-      "label": "",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "local_file_url",
-      "label": "Local File URL",
-      "fieldtype": "Text"
-    },
-    {
-      "fieldname": "local_file_deleted",
-      "label": "Local File Deleted",
-      "fieldtype": "Check"
-    },
-    {
-      "fieldname": "deleted_on",
-      "label": "Deleted On",
-      "fieldtype": "Datetime"
-    },
-    {
-      "fieldname": "deleted_by",
-      "label": "Deleted By",
-      "fieldtype": "Link",
-      "options": "User"
-    },
-    {
-      "fieldname": "error_message",
-      "label": "Error Message",
-      "fieldtype": "Text"
-    },
-    {
-      "fieldname": "deleted_from_storage",
-      "label": "Deleted From Storage",
-      "fieldtype": "Check",
-      "default": "0",
-      "read_only": 1
-    }
-  ],
-  "grid_page_length": 50,
-  "hide_toolbar": 0,
-  "idx": 0,
-  "image_field": "",
-  "in_create": 0,
-  "is_calendar_and_gantt": 0,
-  "is_submittable": 0,
-  "issingle": 0,
-  "istable": 0,
-  "links": [],
-  "modified": "2026-06-28 00:00:00.000000",
-  "modified_by": "Administrator",
-  "module": "Frappe S3 Vault",
-  "name": "S3 Vault File",
-  "naming_rule": "",
-  "owner": "Administrator",
-  "permissions": [
-    {
-      "role": "System Manager",
-      "read": 1,
-      "write": 1,
-      "create": 1,
-      "delete": 1,
-      "submit": 0,
-      "cancel": 0,
-      "amend": 0,
-      "report": 1,
-      "export": 1,
-      "import": 1,
-      "share": 1,
-      "print": 1,
-      "email": 1
-    }
-  ],
-  "quick_entry": 0,
-  "read_only": 0,
-  "sort_field": "modified",
-  "sort_order": "DESC",
-  "states": [],
-  "track_changes": 1,
-  "track_seen": 0,
-  "title_field": "original_file_name",
-  "search_fields": "object_key,original_file_name,attached_to_doctype,attached_to_name,bucket_name"
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-06-28 00:00:00",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "file",
+  "file_url",
+  "attached_to_doctype",
+  "attached_to_name",
+  "attached_to_field",
+  "column_break_10",
+  "rule_used",
+  "bucket",
+  "bucket_name",
+  "object_key",
+  "file_info_section",
+  "original_file_name",
+  "stored_file_name",
+  "file_size",
+  "content_type",
+  "file_extension",
+  "column_break_11",
+  "file_hash",
+  "etag",
+  "version_id",
+  "is_private",
+  "status_section",
+  "status",
+  "uploaded_on",
+  "uploaded_by",
+  "last_accessed_on",
+  "error_message",
+  "column_break_12",
+  "local_file_url",
+  "local_file_deleted",
+  "deleted_on",
+  "deleted_by",
+  "deleted_from_storage"
+ ],
+ "fields": [
+  {
+   "fieldname": "file",
+   "fieldtype": "Link",
+   "label": "Frappe File",
+   "options": "File"
+  },
+  {
+   "fieldname": "file_url",
+   "fieldtype": "Text",
+   "label": "File URL"
+  },
+  {
+   "fieldname": "attached_to_doctype",
+   "fieldtype": "Data",
+   "label": "Attached To DocType"
+  },
+  {
+   "fieldname": "attached_to_name",
+   "fieldtype": "Data",
+   "label": "Attached To Name"
+  },
+  {
+   "fieldname": "attached_to_field",
+   "fieldtype": "Data",
+   "label": "Attached To Field"
+  },
+  {
+   "fieldname": "column_break_10",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "rule_used",
+   "fieldtype": "Link",
+   "label": "Rule Used",
+   "options": "S3 Vault Rule"
+  },
+  {
+   "fieldname": "bucket",
+   "fieldtype": "Link",
+   "label": "Bucket",
+   "options": "S3 Vault Bucket"
+  },
+  {
+   "fieldname": "bucket_name",
+   "fieldtype": "Data",
+   "label": "Bucket Name"
+  },
+  {
+   "fieldname": "object_key",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Object Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "file_info_section",
+   "fieldtype": "Section Break",
+   "label": "File Info"
+  },
+  {
+   "fieldname": "original_file_name",
+   "fieldtype": "Data",
+   "label": "Original File Name"
+  },
+  {
+   "fieldname": "stored_file_name",
+   "fieldtype": "Data",
+   "label": "Stored File Name"
+  },
+  {
+   "fieldname": "file_size",
+   "fieldtype": "Int",
+   "label": "File Size"
+  },
+  {
+   "fieldname": "content_type",
+   "fieldtype": "Data",
+   "label": "Content Type"
+  },
+  {
+   "fieldname": "file_extension",
+   "fieldtype": "Data",
+   "label": "File Extension"
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "file_hash",
+   "fieldtype": "Data",
+   "label": "File Hash"
+  },
+  {
+   "fieldname": "etag",
+   "fieldtype": "Data",
+   "label": "ETag"
+  },
+  {
+   "fieldname": "version_id",
+   "fieldtype": "Data",
+   "label": "Version ID"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_private",
+   "fieldtype": "Check",
+   "label": "Is Private"
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nUploaded\nFailed\nSoft Deleted\nDeleted\nMissing"
+  },
+  {
+   "fieldname": "uploaded_on",
+   "fieldtype": "Datetime",
+   "label": "Uploaded On"
+  },
+  {
+   "fieldname": "uploaded_by",
+   "fieldtype": "Link",
+   "label": "Uploaded By",
+   "options": "User"
+  },
+  {
+   "fieldname": "last_accessed_on",
+   "fieldtype": "Datetime",
+   "label": "Last Accessed On"
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "local_file_url",
+   "fieldtype": "Text",
+   "label": "Local File URL"
+  },
+  {
+   "default": "0",
+   "fieldname": "local_file_deleted",
+   "fieldtype": "Check",
+   "label": "Local File Deleted"
+  },
+  {
+   "fieldname": "deleted_on",
+   "fieldtype": "Datetime",
+   "label": "Deleted On"
+  },
+  {
+   "fieldname": "deleted_by",
+   "fieldtype": "Link",
+   "label": "Deleted By",
+   "options": "User"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Text",
+   "label": "Error Message"
+  },
+  {
+   "default": "0",
+   "fieldname": "deleted_from_storage",
+   "fieldtype": "Check",
+   "label": "Deleted From Storage",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2026-06-29 19:00:23.529163",
+ "modified_by": "Administrator",
+ "module": "Frappe S3 Vault",
+ "name": "S3 Vault File",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "object_key,original_file_name,attached_to_doctype,attached_to_name,bucket_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "original_file_name",
+ "track_changes": 1
 }

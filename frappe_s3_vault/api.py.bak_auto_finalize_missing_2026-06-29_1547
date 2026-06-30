@@ -1,38 +1,17 @@
 import frappe
 
 
-def finalize_missing_file_safely(file_id):
-    """
-    When a file URL points to S3 Vault but the object is missing,
-    cleanup Raven card, File row, and create Delete log.
-    """
-
-    try:
-        from frappe_s3_vault.delete_cleanup import finalize_deleted_file
-
-        return finalize_deleted_file(
-            file_id=file_id,
-            dry_run=0,
-            delete_file_record=1,
-        )
-
-    except Exception:
-        frappe.log_error(
-            frappe.get_traceback(),
-            "S3 Vault Auto Finalize Missing File Failed",
-        )
-        return None
-
-
 @frappe.whitelist()
 def download(file):
     """
     Secure download endpoint.
 
-    If storage object is missing:
-    - mark S3 Vault File as Missing
-    - write failed Download log
-    - finalize Raven/File cleanup
+    Flow:
+    - find uploaded S3 Vault File
+    - verify object exists in Wasabi
+    - write clean Download log
+    - update last_accessed_on
+    - redirect to presigned URL
     """
 
     from frappe_s3_vault.records import (
@@ -71,11 +50,6 @@ def download(file):
         except Exception:
             pass
 
-        # Important fallback:
-        # If S3 Vault File exists but is Missing, Deleted, or invalid,
-        # cleanup Raven card and File row now.
-        finalize_missing_file_safely(file)
-
         frappe.throw("This file is not available in storage")
 
     if not vault.object_key:
@@ -90,8 +64,6 @@ def download(file):
             )
         except Exception:
             pass
-
-        finalize_missing_file_safely(file)
 
         frappe.throw("This file has no storage object key")
 
@@ -127,11 +99,6 @@ def download(file):
             )
         except Exception:
             pass
-
-        # Important fallback:
-        # convert broken Raven card to text, delete File row,
-        # mark S3 Vault File as Deleted, and create Delete log.
-        finalize_missing_file_safely(file)
 
         frappe.throw("This file was deleted from storage or is no longer available")
 

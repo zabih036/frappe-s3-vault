@@ -1,0 +1,212 @@
+import frappe
+
+
+UPLOAD_METHOD = "frappe_s3_vault.upload.upload_file_to_s3"
+DOWNLOAD_PREFIX = "/api/method/frappe_s3_vault.api.download"
+
+
+def is_s3_url(file_url):
+    return bool(file_url and str(file_url).startswith(DOWNLOAD_PREFIX))
+
+
+def file_has_rule(file_doc):
+    try:
+        from frappe_s3_vault.utils import enabled_rule_for_file
+        return bool(enabled_rule_for_file(file_doc))
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Rule Check Failed")
+        return False
+
+
+def enqueue_s3_upload(file_doc, method=None):
+    """
+    Enqueue upload only after Frappe/Raven has finished saving the local file.
+    This prevents 'No such file or directory' during upload.
+    """
+
+    try:
+        if not file_doc:
+            return
+
+        if is_s3_url(file_doc.file_url):
+            return
+
+        if not file_has_rule(file_doc):
+            return
+
+        frappe.enqueue(
+            UPLOAD_METHOD,
+            queue="long",
+            file_name=file_doc.name,
+            enqueue_after_commit=True,
+            job_id=f"s3-vault-upload-{file_doc.name}",
+            deduplicate=True,
+        )
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Enqueue Upload Failed")
+
+
+def after_insert_file(doc, method=None):
+    enqueue_s3_upload(doc)
+
+
+def on_update_file(doc, method=None):
+    enqueue_s3_upload(doc)
+
+
+def upload_file_to_s3(file_name):
+    """
+    Backward-compatible wrapper.
+
+    Old jobs may still call:
+    frappe_s3_vault.handlers.upload_file_to_s3
+
+    New real upload logic lives in:
+    frappe_s3_vault.upload.upload_file_to_s3
+    """
+
+    from frappe_s3_vault.upload import upload_file_to_s3 as clean_upload
+    return clean_upload(file_name)
+
+
+def safe_log(action, status="Success", file_id=None, message=None):
+    """
+    Temporary log helper until S3 Vault Log is cleaned in the next step.
+    For Delete, we do not keep Link to File, because it can block File deletion.
+    """
+
+    try:
+        doc = frappe.new_doc("S3 Vault Log")
+
+        if doc.meta.has_field("action"):
+            doc.action = action
+
+        if doc.meta.has_field("status"):
+            doc.status = status
+
+        # For Upload/Download, keeping the File link is okay.
+        # For Delete, avoid keeping link because File deletion can be blocked.
+        if action != "Delete" and doc.meta.has_field("file") and file_id and frappe.db.exists("File", file_id):
+            doc.file = file_id
+
+        if doc.meta.has_field("error_message"):
+            doc.error_message = message
+
+        doc.flags.ignore_permissions = True
+        doc.insert(ignore_permissions=True)
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Log Failed")
+
+
+def delete_s3_objects_for_file(file_id):
+    """
+    Delete Wasabi/S3 object for this File and mark S3 Vault File rows deleted.
+    """
+
+    from frappe_s3_vault.utils import s3_client
+    from frappe_s3_vault.records import mark_deleted_from_storage
+
+    rows = frappe.get_all(
+        "S3 Vault File",
+        filters={"file": file_id},
+        fields=["name", "bucket", "object_key", "status"],
+        order_by="creation desc",
+    )
+
+    deleted = []
+    failed = []
+
+    for row in rows:
+        if not row.object_key or not row.bucket:
+            continue
+
+        try:
+            bucket_doc = frappe.get_doc("S3 Vault Bucket", row.bucket)
+            client = s3_client(bucket_doc)
+
+            try:
+                client.delete_object(
+                    Bucket=bucket_doc.bucket_name,
+                    Key=row.object_key,
+                )
+            except Exception:
+                # If object is already missing, still mark it deleted locally.
+                pass
+
+            mark_deleted_from_storage(file_id, release_file_link=False)
+            deleted.append(row.object_key)
+
+        except Exception:
+            failed.append(row.object_key)
+            frappe.log_error(frappe.get_traceback(), "S3 Vault Delete Object Failed")
+
+    return {"deleted": deleted, "failed": failed}
+
+
+def clean_raven_deleted_file(file_id):
+    try:
+        from frappe_s3_vault.delete_fix import clean_raven_message_for_deleted_file
+        clean_raven_message_for_deleted_file(file_id)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Raven Delete Cleanup Failed")
+
+
+def release_links_after_delete(file_id):
+    """
+    Release S3 Vault links to File so File deletion is not blocked.
+    """
+
+    try:
+        from frappe_s3_vault.records import release_file_link_from_vault
+        release_file_link_from_vault(file_id)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Release File Link Failed")
+
+    try:
+        frappe.db.sql(
+            "update `tabS3 Vault Log` set file=NULL where file=%s",
+            file_id,
+        )
+    except Exception:
+        try:
+            frappe.db.sql(
+                "update `tabS3 Vault Log` set file='' where file=%s",
+                file_id,
+            )
+        except Exception:
+            pass
+
+
+def on_trash_file(doc, method=None):
+    """
+    File delete flow:
+    - delete object from Wasabi
+    - mark S3 Vault File as Deleted
+    - clean Raven deleted reference
+    - write Delete log
+    - release links so File deletion is not blocked
+    """
+
+    file_id = doc.name
+
+    try:
+        result = delete_s3_objects_for_file(file_id)
+
+        clean_raven_deleted_file(file_id)
+
+        safe_log(
+            "Delete",
+            "Success" if not result.get("failed") else "Failed",
+            file_id,
+            f"deleted={result.get('deleted')} failed={result.get('failed')}",
+        )
+
+        release_links_after_delete(file_id)
+
+        frappe.db.commit()
+
+    except Exception:
+        safe_log("Delete", "Failed", file_id, frappe.get_traceback())
+        frappe.log_error(frappe.get_traceback(), "S3 Vault File Delete Failed")

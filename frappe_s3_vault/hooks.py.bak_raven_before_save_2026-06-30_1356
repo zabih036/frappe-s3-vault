@@ -35,19 +35,3 @@ except NameError:
 
 if "/assets/frappe_s3_vault/js/s3_vault_realtime.js" not in app_include_js:
     app_include_js.append("/assets/frappe_s3_vault/js/s3_vault_realtime.js")
-
-
-# S3 Vault: prepare Raven file/image messages before save
-try:
-    doc_events
-except NameError:
-    doc_events = {}
-
-doc_events.setdefault("Raven Message", {})
-
-doc_events["Raven Message"]["validate"] = "frappe_s3_vault.raven_message_hooks.prepare_raven_file_before_save"
-doc_events["Raven Message"]["before_insert"] = "frappe_s3_vault.raven_message_hooks.prepare_raven_file_before_save"
-
-# Keep Raven delete cleanup hooks active.
-doc_events["Raven Message"]["on_update"] = "frappe_s3_vault.raven_delete_hooks.on_update_raven_message"
-doc_events["Raven Message"]["on_trash"] = "frappe_s3_vault.raven_delete_hooks.on_trash_raven_message"

@@ -4,56 +4,9 @@ import frappe
 UPLOAD_METHOD = "frappe_s3_vault.upload.upload_file_to_s3"
 DOWNLOAD_PREFIX = "/api/method/frappe_s3_vault.api.download"
 
-# True = no refresh bug, because upload finishes before browser gets response.
-# False = faster UI, but file may show local URL until refresh.
-SYNC_UPLOAD = False
-
 
 def is_s3_url(file_url):
     return bool(file_url and str(file_url).startswith(DOWNLOAD_PREFIX))
-
-
-def get_db_file_url(file_id):
-    try:
-        return frappe.db.get_value("File", file_id, "file_url")
-    except Exception:
-        return None
-
-
-def has_existing_vault_record(file_id):
-    try:
-        return bool(
-            frappe.db.exists(
-                "S3 Vault File",
-                {
-                    "file": file_id,
-                    "status": ["in", ["Uploaded", "Deleted", "Missing"]],
-                },
-            )
-        )
-    except Exception:
-        return False
-
-
-def should_skip_upload(file_doc):
-    if not file_doc:
-        return True
-
-    if getattr(frappe.flags, "s3_vault_skip_upload_hook", False):
-        return True
-
-    if is_s3_url(file_doc.file_url):
-        return True
-
-    db_file_url = get_db_file_url(file_doc.name)
-
-    if is_s3_url(db_file_url):
-        return True
-
-    if has_existing_vault_record(file_doc.name):
-        return True
-
-    return False
 
 
 def file_has_rule(file_doc):
@@ -65,53 +18,19 @@ def file_has_rule(file_doc):
         return False
 
 
-def run_s3_upload_now(file_doc):
-    """
-    Synchronous upload.
-
-    This fixes the refresh problem for all DocTypes because tabFile.file_url
-    is changed before the upload request returns to the browser.
-    """
-
-    try:
-        if should_skip_upload(file_doc):
-            return
-
-        if not file_has_rule(file_doc):
-            return
-
-        from frappe_s3_vault.upload import upload_file_to_s3
-
-        frappe.flags.s3_vault_skip_upload_hook = True
-
-        try:
-            upload_file_to_s3(file_doc.name)
-        finally:
-            frappe.flags.s3_vault_skip_upload_hook = False
-
-    except Exception:
-        frappe.flags.s3_vault_skip_upload_hook = False
-        frappe.log_error(frappe.get_traceback(), "S3 Vault Sync Upload Failed")
-        raise
-
-
 def enqueue_s3_upload(file_doc, method=None):
     """
-    Backward-compatible name.
-
-    In production we now use synchronous upload to prevent local URL showing
-    until browser refresh.
+    Enqueue upload only after Frappe/Raven has finished saving the local file.
     """
 
     try:
-        if should_skip_upload(file_doc):
+        if not file_doc:
+            return
+
+        if is_s3_url(file_doc.file_url):
             return
 
         if not file_has_rule(file_doc):
-            return
-
-        if SYNC_UPLOAD:
-            run_s3_upload_now(file_doc)
             return
 
         frappe.enqueue(
@@ -124,8 +43,7 @@ def enqueue_s3_upload(file_doc, method=None):
         )
 
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "S3 Vault Upload Hook Failed")
-        raise
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Enqueue Upload Failed")
 
 
 def after_insert_file(doc, method=None):
@@ -163,6 +81,16 @@ def get_file_storage_rows(file_id):
 
 
 def delete_s3_objects_for_file(file_id):
+    """
+    Delete Wasabi/S3 objects for this File.
+
+    Returns detailed rows so Delete logs can include:
+    - storage_file
+    - bucket_name
+    - object_key
+    - status
+    """
+
     from frappe_s3_vault.utils import s3_client
     from frappe_s3_vault.records import mark_deleted_from_storage
 
@@ -201,6 +129,7 @@ def delete_s3_objects_for_file(file_id):
                 item["status"] = "Deleted"
 
             except Exception:
+                # If object is already missing, still mark local record deleted.
                 item["status"] = "Deleted"
                 item["error"] = "Object may already be missing in storage"
 
@@ -258,6 +187,10 @@ def write_delete_logs(file_id, delete_results):
 
 
 def release_links_after_delete(file_id):
+    """
+    Release links to File so File deletion is not blocked.
+    """
+
     try:
         from frappe_s3_vault.records import release_file_link_from_vault
         release_file_link_from_vault(file_id)
@@ -280,8 +213,14 @@ def release_links_after_delete(file_id):
 
 
 def on_trash_file(doc, method=None):
-    if getattr(frappe.flags, "s3_vault_skip_file_delete_hook", False):
-        return
+    """
+    File delete flow:
+    - delete object from Wasabi
+    - mark S3 Vault File as Deleted
+    - clean Raven deleted reference
+    - write clean Delete log
+    - release links so File deletion is not blocked
+    """
 
     file_id = doc.name
 

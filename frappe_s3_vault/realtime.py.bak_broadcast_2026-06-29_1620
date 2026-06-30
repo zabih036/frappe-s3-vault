@@ -1,0 +1,56 @@
+import frappe
+
+
+def publish_file_uploaded(file_id, storage_file=None, object_key=None, bucket_name=None):
+    """
+    Notify browser that an attachment has changed from local URL to S3 Vault URL.
+
+    Works for normal Desk forms like Sales Order, Purchase Invoice, Employee, etc.
+    Raven may need its own frontend listener, but this still publishes the event.
+    """
+
+    if not file_id or not frappe.db.exists("File", file_id):
+        return {
+            "status": "skipped",
+            "reason": "File not found",
+            "file": file_id,
+        }
+
+    file_doc = frappe.get_doc("File", file_id)
+
+    payload = {
+        "file": file_id,
+        "file_name": file_doc.file_name,
+        "file_url": file_doc.file_url,
+        "attached_to_doctype": file_doc.attached_to_doctype,
+        "attached_to_name": file_doc.attached_to_name,
+        "attached_to_field": file_doc.attached_to_field,
+        "storage_file": storage_file,
+        "bucket_name": bucket_name,
+        "object_key": object_key,
+    }
+
+    # Custom event for our JS.
+    frappe.publish_realtime(
+        "s3_vault_file_uploaded",
+        payload,
+        user=frappe.session.user,
+        after_commit=True,
+    )
+
+    # Standard Frappe doc update event.
+    if file_doc.attached_to_doctype and file_doc.attached_to_name:
+        frappe.publish_realtime(
+            "doc_update",
+            {
+                "doctype": file_doc.attached_to_doctype,
+                "name": file_doc.attached_to_name,
+            },
+            user=frappe.session.user,
+            after_commit=True,
+        )
+
+    return {
+        "status": "published",
+        "payload": payload,
+    }
