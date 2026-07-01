@@ -309,3 +309,129 @@ def on_trash_file(doc, method=None):
             pass
 
         frappe.log_error(frappe.get_traceback(), "S3 Vault File Delete Failed")
+
+
+# stable override: normal Frappe File delete cleanup for S3 Vault
+def on_trash_file(doc, method=None):
+    import frappe
+    from frappe.utils import now_datetime, cint
+
+    if getattr(frappe.flags, "s3_vault_skip_file_delete_hook", False):
+        return
+
+    rows = frappe.get_all(
+        "S3 Vault File",
+        filters={
+            "file": doc.name,
+            "status": ["in", ["Uploaded", "Failed", "Missing", "Soft Deleted", "Deleted"]],
+        },
+        fields=[
+            "name",
+            "file",
+            "status",
+            "bucket",
+            "bucket_name",
+            "object_key",
+            "rule_used",
+            "attached_to_doctype",
+            "attached_to_name",
+        ],
+        order_by="creation desc",
+    )
+
+    if not rows:
+        return
+
+    from frappe_s3_vault.utils import s3_client
+    from frappe_s3_vault.logs import write_log
+
+    for row in rows:
+        deleted_from_storage = 0
+        final_status = "Deleted"
+        message = None
+
+        try:
+            allow_delete = 1
+
+            if row.rule_used and frappe.db.exists("S3 Vault Rule", row.rule_used):
+                rule = frappe.get_doc("S3 Vault Rule", row.rule_used)
+                allow_delete = cint(getattr(rule, "allow_delete_from_s3", 0))
+
+            if allow_delete:
+                if row.bucket and row.object_key:
+                    bucket_doc = frappe.get_doc("S3 Vault Bucket", row.bucket)
+                    bucket_name = row.bucket_name or bucket_doc.bucket_name
+
+                    client = s3_client(bucket_doc)
+
+                    try:
+                        client.delete_object(
+                            Bucket=bucket_name,
+                            Key=row.object_key,
+                        )
+                        deleted_from_storage = 1
+                        message = f"Deleted object {row.object_key} from storage"
+                    except Exception:
+                        deleted_from_storage = 1
+                        message = "Delete requested; object may already be missing in S3/Wasabi"
+                else:
+                    message = "Skipped S3 delete because bucket or object_key is missing"
+
+            else:
+                final_status = "Soft Deleted"
+                deleted_from_storage = 0
+                message = f"S3 object preserved because rule {row.rule_used} does not allow delete from S3"
+
+            frappe.db.set_value(
+                "S3 Vault File",
+                row.name,
+                {
+                    "file": None,
+                    "status": final_status,
+                    "deleted_from_storage": deleted_from_storage,
+                    "deleted_on": now_datetime(),
+                    "deleted_by": frappe.session.user,
+                },
+                update_modified=False,
+            )
+
+            # Important: prevent File deletion being blocked by S3 Vault Log.file
+            frappe.db.sql(
+                """
+                update `tabS3 Vault Log`
+                set file=NULL
+                where file=%s
+                """,
+                doc.name,
+            )
+
+            write_log(
+                action="Delete",
+                status="Success",
+                file_id=None,
+                storage_file=row.name,
+                bucket_name=row.bucket_name,
+                object_key=row.object_key,
+                error_message=message,
+                commit=False,
+            )
+
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "S3 Vault Normal File Delete Failed")
+
+            try:
+                write_log(
+                    action="Delete",
+                    status="Failed",
+                    file_id=None,
+                    storage_file=row.name,
+                    bucket_name=row.bucket_name,
+                    object_key=row.object_key,
+                    error_message="Normal File delete cleanup failed",
+                    traceback_text=frappe.get_traceback(),
+                    commit=False,
+                )
+            except Exception:
+                pass
+
+            raise

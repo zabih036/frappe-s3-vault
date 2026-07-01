@@ -492,3 +492,127 @@ def validate_file_against_rule(file_doc, rule_doc):
         )
 
     return True
+
+
+# stable override: strict S3 Vault Rule matching and extension validation
+def _s3vault_split_csv(value):
+    import re
+
+    if not value:
+        return []
+
+    return [
+        x.strip().lower().lstrip(".")
+        for x in re.split(r"[\n,;| ]+", str(value))
+        if x.strip()
+    ]
+
+
+def _s3vault_file_extension(file_doc):
+    import os
+
+    file_name = (
+        getattr(file_doc, "file_name", None)
+        or getattr(file_doc, "file_url", None)
+        or ""
+    )
+
+    file_name = str(file_name).split("?", 1)[0]
+    return os.path.splitext(file_name)[1].lower().lstrip(".")
+
+
+def _s3vault_rule_matches_file(rule_doc, file_doc):
+    applies_to = getattr(rule_doc, "applies_to", None) or "All Attachments"
+
+    if applies_to == "All Attachments":
+        return True
+
+    if applies_to == "Specific Attach Field":
+        return bool(
+            getattr(rule_doc, "attach_fieldname", None)
+            and getattr(file_doc, "attached_to_field", None) == getattr(rule_doc, "attach_fieldname", None)
+        )
+
+    if applies_to == "File Manager Attachments":
+        return not bool(getattr(file_doc, "attached_to_doctype", None))
+
+    return True
+
+
+def enabled_rule_for_file(file_doc):
+    """
+    Strict rule matcher.
+
+    If S3 Vault Rule.enabled = 0, this returns None.
+    """
+
+    import frappe
+
+    attached_doctype = getattr(file_doc, "attached_to_doctype", None)
+
+    if not attached_doctype:
+        return None
+
+    rule_names = frappe.get_all(
+        "S3 Vault Rule",
+        filters={
+            "enabled": 1,
+            "reference_doctype": attached_doctype,
+        },
+        pluck="name",
+        order_by="priority asc, modified desc",
+    )
+
+    for rule_name in rule_names:
+        rule_doc = frappe.get_doc("S3 Vault Rule", rule_name)
+
+        if _s3vault_rule_matches_file(rule_doc, file_doc):
+            return rule_doc
+
+    return None
+
+
+def validate_file_against_rule(file_doc, rule):
+    """
+    Upload validation before S3 upload.
+
+    Enforces:
+    - disabled rule should not upload
+    - blocked_extensions
+    - allowed_extensions
+    - max_file_size_mb when File.file_size exists
+    """
+
+    import frappe
+    from frappe.utils import cint, flt
+
+    if not rule or not cint(getattr(rule, "enabled", 0)):
+        frappe.throw("No enabled S3 Vault Rule matched this file")
+
+    ext = _s3vault_file_extension(file_doc)
+
+    blocked = _s3vault_split_csv(getattr(rule, "blocked_extensions", None))
+    allowed = _s3vault_split_csv(getattr(rule, "allowed_extensions", None))
+
+    if ext and ext in blocked:
+        frappe.throw(f"File type .{ext} is blocked by S3 Vault Rule {rule.name}")
+
+    if allowed and ext not in allowed:
+        frappe.throw(
+            f"File type .{ext or 'unknown'} is not allowed by S3 Vault Rule {rule.name}. "
+            f"Allowed extensions: {', '.join(allowed)}"
+        )
+
+    max_mb = flt(getattr(rule, "max_file_size_mb", 0) or 0)
+    file_size = flt(getattr(file_doc, "file_size", 0) or 0)
+
+    if max_mb and file_size:
+        size_mb = file_size / (1024 * 1024)
+
+        if size_mb > max_mb:
+            frappe.throw(
+                f"File size {size_mb:.2f} MB is bigger than allowed {max_mb:.2f} MB "
+                f"by S3 Vault Rule {rule.name}"
+            )
+
+    return True

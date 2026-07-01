@@ -1,132 +1,175 @@
 {
-  "doctype": "DocType",
-  "name": "S3 Vault Bucket",
-  "module": "Frappe S3 Vault",
-  "custom": 0,
-  "is_submittable": 0,
-  "istable": 0,
-  "track_changes": 1,
-  "autoname": "field:bucket_title",
-  "title_field": "bucket_title",
-  "fields": [
-    {
-      "fieldname": "bucket_title",
-      "label": "Bucket Title",
-      "fieldtype": "Data",
-      "reqd": 1,
-      "unique": 1,
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "enabled",
-      "label": "Enabled",
-      "fieldtype": "Check",
-      "default": "1",
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "provider_type",
-      "label": "Provider Type",
-      "fieldtype": "Select",
-      "options": "AWS S3\nWasabi\nMinIO\nDigitalOcean Spaces\nCloudflare R2\nCustom",
-      "default": "Wasabi",
-      "reqd": 1
-    },
-    {
-      "fieldname": "bucket_name",
-      "label": "Bucket Name",
-      "fieldtype": "Data",
-      "reqd": 1,
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "region",
-      "label": "Region",
-      "fieldtype": "Data",
-      "reqd": 1
-    },
-    {
-      "fieldname": "endpoint_url",
-      "label": "Endpoint URL",
-      "fieldtype": "Data",
-      "description": "Example: https://s3.eu-central-1.wasabisys.com"
-    },
-    {
-      "fieldname": "credentials_section",
-      "label": "Credentials",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "access_key",
-      "label": "Access Key",
-      "fieldtype": "Password",
-      "reqd": 1
-    },
-    {
-      "fieldname": "secret_key",
-      "label": "Secret Key",
-      "fieldtype": "Password",
-      "reqd": 1
-    },
-    {
-      "fieldname": "options_section",
-      "label": "Bucket Options",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "base_prefix",
-      "label": "Base Prefix",
-      "fieldtype": "Data",
-      "description": "Optional folder prefix, example: aogc_v16"
-    },
-    {
-      "fieldname": "is_default",
-      "label": "Is Default",
-      "fieldtype": "Check",
-      "default": "0"
-    },
-    {
-      "fieldname": "use_ssl",
-      "label": "Use SSL",
-      "fieldtype": "Check",
-      "default": "1"
-    },
-    {
-      "fieldname": "verify_ssl",
-      "label": "Verify SSL",
-      "fieldtype": "Check",
-      "default": "1"
-    },
-    {
-      "fieldname": "last_connection_status",
-      "label": "Last Connection Status",
-      "fieldtype": "Select",
-      "options": "\nSuccess\nFailed"
-    },
-    {
-      "fieldname": "last_connection_message",
-      "label": "Last Connection Message",
-      "fieldtype": "Small Text",
-      "read_only": 1
-    },
-    {
-      "fieldname": "last_checked_on",
-      "label": "Last Checked On",
-      "fieldtype": "Datetime",
-      "read_only": 1
-    }
-  ],
-  "permissions": [
-    {
-      "role": "System Manager",
-      "read": 1,
-      "write": 1,
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "print": 1,
-      "export": 1,
-      "share": 1
-    }
-  ]
+ "actions": [],
+ "autoname": "field:bucket_title",
+ "creation": "2026-06-28 19:49:58.702217",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "bucket_title",
+  "bucket_name",
+  "provider_type",
+  "column_break_rdgg",
+  "region",
+  "endpoint_url",
+  "credentials_section",
+  "access_key",
+  "column_break_nlcf",
+  "secret_key",
+  "options_section",
+  "base_prefix",
+  "is_default",
+  "use_ssl",
+  "verify_ssl",
+  "column_break_tkti",
+  "last_connection_message",
+  "last_checked_on",
+  "last_connection_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "bucket_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bucket Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "default": "Wasabi",
+   "fieldname": "provider_type",
+   "fieldtype": "Select",
+   "label": "Provider Type",
+   "options": "AWS S3\nWasabi\nMinIO\nDigitalOcean Spaces\nCloudflare R2\nCustom",
+   "reqd": 1
+  },
+  {
+   "fieldname": "bucket_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bucket Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "region",
+   "fieldtype": "Data",
+   "label": "Region",
+   "reqd": 1
+  },
+  {
+   "description": "Example: https://s3.eu-central-1.wasabisys.com",
+   "fieldname": "endpoint_url",
+   "fieldtype": "Data",
+   "label": "Endpoint URL"
+  },
+  {
+   "fieldname": "credentials_section",
+   "fieldtype": "Section Break",
+   "label": "Credentials"
+  },
+  {
+   "fieldname": "access_key",
+   "fieldtype": "Password",
+   "label": "Access Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "secret_key",
+   "fieldtype": "Password",
+   "label": "Secret Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "options_section",
+   "fieldtype": "Section Break",
+   "label": "Bucket Options"
+  },
+  {
+   "description": "Optional folder prefix, example: aogc",
+   "fieldname": "base_prefix",
+   "fieldtype": "Data",
+   "label": "Base Prefix"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Is Default"
+  },
+  {
+   "default": "1",
+   "fieldname": "use_ssl",
+   "fieldtype": "Check",
+   "label": "Use SSL"
+  },
+  {
+   "default": "1",
+   "fieldname": "verify_ssl",
+   "fieldtype": "Check",
+   "label": "Verify SSL"
+  },
+  {
+   "fieldname": "last_connection_status",
+   "fieldtype": "Select",
+   "label": "Last Connection Status",
+   "options": "\nSuccess\nFailed"
+  },
+  {
+   "fieldname": "last_connection_message",
+   "fieldtype": "Small Text",
+   "label": "Last Connection Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_checked_on",
+   "fieldtype": "Datetime",
+   "label": "Last Checked On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rdgg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_nlcf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_tkti",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-01 16:53:56.764747",
+ "modified_by": "Administrator",
+ "module": "Frappe S3 Vault",
+ "name": "S3 Vault Bucket",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "bucket_title",
+ "track_changes": 1
 }

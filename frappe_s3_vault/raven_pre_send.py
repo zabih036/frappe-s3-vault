@@ -143,3 +143,82 @@ def prepare_text(text):
         "text": output,
         "replaced": replaced,
     }
+
+
+# stable override: Raven must respect disabled rules and extension validation before message save
+@frappe.whitelist()
+def prepare_file(file_id=None, file=None, file_url=None, *args, **kwargs):
+    import frappe
+
+    file_id = file_id or file
+
+    if not file_id and file_url:
+        file_id = frappe.db.get_value("File", {"file_url": file_url}, "name")
+
+    if not file_id or not frappe.db.exists("File", file_id):
+        frappe.throw("Raven file was not found")
+
+    file_doc = frappe.get_doc("File", file_id)
+
+    from frappe_s3_vault.utils import enabled_rule_for_file, validate_file_against_rule
+
+    rule_doc = enabled_rule_for_file(file_doc)
+
+    # If rule is disabled/no rule matched, do not upload to S3 and do not convert to Wasabi API URL.
+    if not rule_doc:
+        return {
+            "status": "rule_disabled",
+            "file": file_doc.name,
+            "url": file_doc.file_url,
+        }
+
+    # Validate extension before Raven message is saved.
+    validate_file_against_rule(file_doc, rule_doc)
+
+    secure_url = f"/api/method/frappe_s3_vault.api.download?file={file_doc.name}"
+
+    if file_doc.file_url == secure_url:
+        return {
+            "status": "already_ready",
+            "file": file_doc.name,
+            "url": secure_url,
+        }
+
+    uploaded = frappe.get_all(
+        "S3 Vault File",
+        filters={
+            "file": file_doc.name,
+            "status": "Uploaded",
+        },
+        fields=["name", "object_key"],
+        limit=1,
+        order_by="creation desc",
+    )
+
+    if uploaded:
+        frappe.db.set_value(
+            "File",
+            file_doc.name,
+            "file_url",
+            secure_url,
+            update_modified=False,
+        )
+
+        return {
+            "status": "already_uploaded",
+            "file": file_doc.name,
+            "url": secure_url,
+        }
+
+    from frappe_s3_vault.upload import upload_file_to_s3
+
+    result = upload_file_to_s3(file_doc.name)
+
+    file_url = frappe.db.get_value("File", file_doc.name, "file_url") or file_doc.file_url
+
+    return {
+        "status": "uploaded",
+        "file": file_doc.name,
+        "url": file_url,
+        "result": result,
+    }

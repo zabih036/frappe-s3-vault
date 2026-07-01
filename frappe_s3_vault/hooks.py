@@ -51,3 +51,15 @@ doc_events["Raven Message"]["before_insert"] = "frappe_s3_vault.raven_message_ho
 # Keep Raven delete cleanup hooks active.
 doc_events["Raven Message"]["on_update"] = "frappe_s3_vault.raven_delete_hooks.on_update_raven_message"
 doc_events["Raven Message"]["on_trash"] = "frappe_s3_vault.raven_delete_hooks.on_trash_raven_message"
+
+
+# Allow File deletion even when referenced by S3 Vault audit/storage records.
+# Cleanup is handled by File on_trash hooks.
+try:
+    ignore_links_on_delete
+except NameError:
+    ignore_links_on_delete = []
+
+for _doctype in ["S3 Vault File", "S3 Vault Log"]:
+    if _doctype not in ignore_links_on_delete:
+        ignore_links_on_delete.append(_doctype)
