@@ -5,6 +5,8 @@ app_description = "Simple S3/Wasabi attachment storage for selected Frappe DocTy
 app_email = "admin@example.com"
 app_license = "MIT"
 
+required_apps = []
+
 doc_events = {
     "File": {
         "after_insert": "frappe_s3_vault.handlers.after_insert_file",
