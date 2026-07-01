@@ -576,3 +576,224 @@ def finalize_deleted_file(file_id, dry_run=1, delete_file_record=1):
 
     result["status"] = "completed"
     return result
+
+
+# stable override: Raven delete must also delete object from Wasabi/S3 when rule allows
+def finalize_deleted_file(
+    file_id=None,
+    dry_run=1,
+    delete_file_record=1,
+    storage_file=None,
+    attached_to_doctype=None,
+    attached_to_name=None,
+    document_type=None,
+    document_name=None,
+    commit=True,
+    *args,
+    **kwargs,
+):
+    import frappe
+    from frappe.utils import cint, now_datetime
+
+    document_type = document_type or attached_to_doctype
+    document_name = document_name or attached_to_name
+
+    filters_list = []
+
+    if storage_file:
+        filters_list.append({"name": storage_file})
+
+    if file_id:
+        filters_list.append({"file": file_id})
+
+    if document_type and document_name:
+        filters_list.append({
+            "attached_to_doctype": document_type,
+            "attached_to_name": document_name,
+        })
+
+    # If only file_id is provided but the File row still exists, also search by attachment target.
+    if file_id and frappe.db.exists("File", file_id):
+        try:
+            f = frappe.get_doc("File", file_id)
+            if f.attached_to_doctype and f.attached_to_name:
+                filters_list.append({
+                    "attached_to_doctype": f.attached_to_doctype,
+                    "attached_to_name": f.attached_to_name,
+                })
+        except Exception:
+            pass
+
+    if not filters_list:
+        return []
+
+    rows_by_name = {}
+
+    for filters in filters_list:
+        rows = frappe.get_all(
+            "S3 Vault File",
+            filters=filters,
+            fields=[
+                "name",
+                "file",
+                "status",
+                "bucket",
+                "bucket_name",
+                "object_key",
+                "rule_used",
+                "attached_to_doctype",
+                "attached_to_name",
+            ],
+            order_by="creation desc",
+        )
+
+        for row in rows:
+            rows_by_name[row.name] = row
+
+    if not rows_by_name:
+        return []
+
+    out = []
+
+    from frappe_s3_vault.logs import write_log
+
+    for row in rows_by_name.values():
+        allow_delete = 0
+
+        if row.rule_used and frappe.db.exists("S3 Vault Rule", row.rule_used):
+            rule = frappe.get_doc("S3 Vault Rule", row.rule_used)
+            allow_delete = cint(getattr(rule, "allow_delete_from_s3", 0))
+
+        item = {
+            "storage_file": row.name,
+            "file": row.file or file_id,
+            "rule_used": row.rule_used,
+            "allow_delete_from_s3": allow_delete,
+            "bucket_name": row.bucket_name,
+            "object_key": row.object_key,
+            "status": None,
+            "deleted_from_storage": 0,
+            "message": None,
+        }
+
+        if dry_run:
+            item["status"] = "Dry Run"
+            out.append(item)
+            continue
+
+        try:
+            final_status = "Deleted"
+            deleted_from_storage = 0
+
+            if allow_delete:
+                if not row.bucket or not row.object_key:
+                    item["message"] = "Cannot delete from Wasabi because bucket or object_key is missing"
+                    final_status = "Deleted"
+                    deleted_from_storage = 0
+                else:
+                    from frappe_s3_vault.utils import s3_client
+
+                    bucket_doc = frappe.get_doc("S3 Vault Bucket", row.bucket)
+                    bucket_name = row.bucket_name or bucket_doc.bucket_name
+
+                    client = s3_client(bucket_doc)
+
+                    try:
+                        client.delete_object(
+                            Bucket=bucket_name,
+                            Key=row.object_key,
+                        )
+                        item["message"] = f"Deleted object {row.object_key} from Wasabi/S3"
+                    except Exception:
+                        # If object was already manually deleted from Wasabi, still mark storage cleanup complete.
+                        item["message"] = "Delete requested; object may already be missing in Wasabi/S3"
+
+                    deleted_from_storage = 1
+                    item["bucket_name"] = bucket_name
+
+            else:
+                final_status = "Soft Deleted"
+                deleted_from_storage = 0
+                item["message"] = f"S3 object preserved because rule {row.rule_used} does not allow delete from S3"
+
+            frappe.db.set_value(
+                "S3 Vault File",
+                row.name,
+                {
+                    "file": None,
+                    "status": final_status,
+                    "deleted_from_storage": deleted_from_storage,
+                    "deleted_on": now_datetime(),
+                    "deleted_by": frappe.session.user,
+                },
+                update_modified=False,
+            )
+
+            # Prevent File deletion/link blocking by audit logs.
+            if row.file or file_id:
+                frappe.db.sql(
+                    """
+                    update `tabS3 Vault Log`
+                    set file=NULL
+                    where file=%s
+                    """,
+                    row.file or file_id,
+                )
+
+            write_log(
+                action="Delete",
+                status="Success",
+                file_id=None,
+                storage_file=row.name,
+                bucket_name=item["bucket_name"],
+                object_key=row.object_key,
+                error_message=item["message"],
+                commit=False,
+            )
+
+            item["status"] = final_status
+            item["deleted_from_storage"] = deleted_from_storage
+
+        except Exception:
+            item["status"] = "Failed"
+            item["message"] = frappe.get_traceback()
+
+            try:
+                write_log(
+                    action="Delete",
+                    status="Failed",
+                    file_id=None,
+                    storage_file=row.name,
+                    bucket_name=row.bucket_name,
+                    object_key=row.object_key,
+                    error_message="Raven Wasabi delete cleanup failed",
+                    traceback_text=frappe.get_traceback(),
+                    commit=False,
+                )
+            except Exception:
+                pass
+
+            frappe.log_error(frappe.get_traceback(), "S3 Vault Raven Wasabi Delete Failed")
+            raise
+
+        out.append(item)
+
+    # Delete Frappe File record only after S3 Vault links are cleared.
+    if delete_file_record and file_id and frappe.db.exists("File", file_id):
+        old_flag = getattr(frappe.flags, "s3_vault_skip_file_delete_hook", False)
+        frappe.flags.s3_vault_skip_file_delete_hook = True
+
+        try:
+            frappe.delete_doc(
+                "File",
+                file_id,
+                ignore_permissions=True,
+                force=True,
+            )
+        finally:
+            frappe.flags.s3_vault_skip_file_delete_hook = old_flag
+
+    if commit:
+        frappe.db.commit()
+
+    return out
