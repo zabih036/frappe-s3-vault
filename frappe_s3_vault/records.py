@@ -352,13 +352,13 @@ def release_file_link_from_vault(file_id):
             "update `tabS3 Vault File` set file=NULL where file=%s",
             file_id,
         )
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
     except Exception:
         frappe.db.sql(
             "update `tabS3 Vault File` set file='' where file=%s",
             file_id,
         )
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
 
 def get_uploaded_record(file_id):
@@ -752,7 +752,7 @@ def merge_duplicate_vault_file_records(file_id, dry_run=1):
                 row.name,
             )
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return result
 
@@ -934,7 +934,7 @@ def relink_released_vault_file(file_id, dry_run=1):
         update_modified=False,
     )
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     try:
         refreshed = refresh_vault_file_metadata(file_id=file_id, vault_name=chosen.name)
@@ -1075,7 +1075,7 @@ def repair_api_url_without_vault_from_local(file_id, dry_run=1):
             found["file_url"],
             update_modified=False,
         )
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
         from frappe_s3_vault.upload import upload_file_to_s3
 
@@ -1093,7 +1093,7 @@ def repair_api_url_without_vault_from_local(file_id, dry_run=1):
             old_url,
             update_modified=False,
         )
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
         raise
 

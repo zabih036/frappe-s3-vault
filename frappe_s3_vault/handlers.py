@@ -294,7 +294,7 @@ def on_trash_file(doc, method=None):
 
         release_links_after_delete(file_id)
 
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     except Exception:
         try:

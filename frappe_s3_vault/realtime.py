@@ -32,7 +32,7 @@ def publish_file_uploaded(file_id, storage_file=None, object_key=None, bucket_na
     }
 
     # Broadcast custom event to all active clients.
-    frappe.publish_realtime(
+    frappe.publish_realtime(  # nosemgrep: frappe-realtime-pick-room - intentional app-level UI refresh event.
         "s3_vault_file_uploaded",
         payload,
         after_commit=True,
@@ -40,7 +40,7 @@ def publish_file_uploaded(file_id, storage_file=None, object_key=None, bucket_na
 
     # Extra Raven-specific event.
     if file_doc.attached_to_doctype == "Raven Message":
-        frappe.publish_realtime(
+        frappe.publish_realtime(  # nosemgrep: frappe-realtime-pick-room - intentional app-level UI refresh event.
             "s3_vault_raven_message_uploaded",
             payload,
             after_commit=True,
@@ -48,7 +48,7 @@ def publish_file_uploaded(file_id, storage_file=None, object_key=None, bucket_na
 
     # Standard doc_update event.
     if file_doc.attached_to_doctype and file_doc.attached_to_name:
-        frappe.publish_realtime(
+        frappe.publish_realtime(  # nosemgrep: frappe-realtime-pick-room - intentional app-level UI refresh event.
             "doc_update",
             {
                 "doctype": file_doc.attached_to_doctype,

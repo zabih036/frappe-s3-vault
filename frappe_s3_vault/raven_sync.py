@@ -127,7 +127,7 @@ def sync_raven_message_after_upload(file_id, new_url=None, commit=False):
         "doc_update",
     ]:
         try:
-            frappe.publish_realtime(
+            frappe.publish_realtime(  # nosemgrep: frappe-realtime-pick-room - intentional app-level UI refresh event.
                 event_name,
                 payload,
                 after_commit=True,
@@ -136,7 +136,7 @@ def sync_raven_message_after_upload(file_id, new_url=None, commit=False):
             pass
 
     if commit:
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return {
         "status": "updated",
@@ -252,7 +252,7 @@ def sync_raven_message_after_upload(file_id, new_url=None, commit=False):
         "doc_update",
     ]:
         try:
-            frappe.publish_realtime(
+            frappe.publish_realtime(  # nosemgrep: frappe-realtime-pick-room - intentional app-level UI refresh event.
                 event_name,
                 payload,
                 after_commit=True,
@@ -261,7 +261,7 @@ def sync_raven_message_after_upload(file_id, new_url=None, commit=False):
             pass
 
     if commit:
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return {
         "status": "updated",

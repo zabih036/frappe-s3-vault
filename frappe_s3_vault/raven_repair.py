@@ -121,7 +121,9 @@ def _doctype_from_raven_table(table):
     if table.startswith("tab"):
         return table[3:]
     return table
-\n\ndef repair_raven_for_file(file_name):
+
+
+def repair_raven_for_file(file_name):
     file_doc = frappe.get_doc("File", file_name)
 
     vault_name = frappe.db.get_value(
@@ -139,12 +141,10 @@ def _doctype_from_raven_table(table):
     new_url = secure_url(file_name)
     old_values = variants_for_file(file_doc, vault_doc)
 
-    # Always update tabFile
     frappe.db.set_value("File", file_name, "file_url", new_url, update_modified=False)
 
     changed = 0
 
-    # Repair every Raven table, not only Raven Message meta fields
     for table in get_raven_tables():
         columns = get_text_columns(table)
         if not columns:
@@ -181,9 +181,7 @@ def _doctype_from_raven_table(table):
                 )
                 changed += 1
 
-    frappe.db.commit()
     return f"Repaired Raven links for {file_name}. Changed rows: {changed}. New URL: {new_url}"
-
 
 def repair_all_raven_links(limit=1000):
     rows = frappe.get_all(
@@ -201,38 +199,68 @@ def repair_all_raven_links(limit=1000):
             repair_raven_for_file(r.file)
             fixed += 1
 
-    frappe.db.commit()
     return f"Repaired {fixed} uploaded files in Raven tables"
-
 
 def find_raven_local_urls(limit=50):
     found = []
 
+    try:
+        limit = int(limit or 50)
+    except Exception:
+        limit = 50
+
+    if limit <= 0:
+        return found
+
+    patterns = ["%/private/files/%", "%/files/%"]
+
     for table in get_raven_tables():
-        columns = get_text_columns(table)
+        if len(found) >= limit:
+            break
+
+        doctype = _doctype_from_raven_table(table)
+
+        try:
+            columns = get_text_columns(table)
+        except Exception:
+            continue
 
         for col in columns:
-            try:
-                rows = frappe.db.sql(
-                    f"""
-                    select name, {qname(col)} as value
-                    from {qname(table)}
-                    where {qname(col)} like %s
-                       or {qname(col)} like %s
-                    limit {int(limit)}
-                    """,
-                    ("%/private/files/%", "%/files/%"),
-                    as_dict=True,
-                )
-            except Exception:
-                continue
+            if len(found) >= limit:
+                break
 
-            for r in rows:
-                found.append({
-                    "table": table,
-                    "name": r.name,
-                    "column": col,
-                    "value": str(r.value)[:300],
-                })
+            for pattern in patterns:
+                if len(found) >= limit:
+                    break
+
+                try:
+                    rows = frappe.get_all(
+                        doctype,
+                        filters={col: ["like", pattern]},
+                        fields=["name", col],
+                        limit_page_length=limit - len(found),
+                        ignore_permissions=True,
+                    )
+                except Exception:
+                    continue
+
+                for row in rows:
+                    value = row.get(col)
+                    if not value:
+                        continue
+
+                    found.append(
+                        {
+                            "table": table,
+                            "doctype": doctype,
+                            "name": row.name,
+                            "column": col,
+                            "value": str(value)[:300],
+                        }
+                    )
+
+                    if len(found) >= limit:
+                        break
 
     return found[:limit]
+

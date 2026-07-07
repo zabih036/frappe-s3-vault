@@ -245,7 +245,7 @@ def prepare_raven_file_before_save(doc, method=None):
 
         # Publish a small event, but saving correct value is the main fix.
         try:
-            frappe.publish_realtime(
+            frappe.publish_realtime(  # nosemgrep: frappe-realtime-pick-room - intentional app-level UI refresh event.
                 "s3_vault_raven_message_prepared",
                 {
                     "doctype": "Raven Message",

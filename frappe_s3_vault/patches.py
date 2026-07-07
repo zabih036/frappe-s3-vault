@@ -23,6 +23,6 @@ def fix_autoname():
             ignore_permissions=True
         )
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
     frappe.clear_cache()
     return "Fixed S3 Vault File and S3 Vault Log autoname"

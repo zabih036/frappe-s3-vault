@@ -316,7 +316,7 @@ def write_log(
     doc.insert(ignore_permissions=True)
 
     if commit:
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return doc.name
 

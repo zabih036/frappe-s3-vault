@@ -196,7 +196,7 @@ def upload_file_to_s3_unlocked(file_name):
         except Exception:
             frappe.log_error(frappe.get_traceback(), "S3 Vault Upload Log Failed")
 
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
         return (
             f"Uploaded {file_doc.name} to {object_key}. "

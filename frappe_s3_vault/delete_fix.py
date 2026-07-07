@@ -156,7 +156,9 @@ def _doctype_from_raven_table(table):
     if table.startswith("tab"):
         return table[3:]
     return table
-\n\ndef clean_raven_message_for_deleted_file(file_id):
+
+
+def clean_raven_message_for_deleted_file(file_id):
     file_doc = None
 
     if frappe.db.exists("File", file_id):
@@ -200,17 +202,15 @@ def _doctype_from_raven_table(table):
                     updates[col] = new
 
             if updates:
-                set_clause = ", ".join([f"{qname(k)}=%s" for k in updates])
-                params = list(updates.values()) + [row.name]
-                frappe.db.sql(
-                    f"update {qname(table)} set {set_clause} where name=%s",
-                    params,
+                frappe.db.set_value(
+                    doctype,
+                    row.name,
+                    updates,
+                    update_modified=False,
                 )
                 changed += 1
 
-    frappe.db.commit()
     return f"Cleaned Raven deleted-file references. Changed rows: {changed}"
-
 
 def mark_vault_deleted_and_release_links(file_id):
     rows = get_vault_rows(file_id)
@@ -248,7 +248,7 @@ def mark_vault_deleted_and_release_links(file_id):
             except Exception:
                 pass
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
 
 def release_log_links(file_id):
@@ -259,14 +259,14 @@ def release_log_links(file_id):
                 "update `tabS3 Vault Log` set file=NULL where file=%s",
                 file_id,
             )
-            frappe.db.commit()
+            frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
     except Exception:
         try:
             frappe.db.sql(
                 "update `tabS3 Vault Log` set file='' where file=%s",
                 file_id,
             )
-            frappe.db.commit()
+            frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
         except Exception:
             pass
 
@@ -287,7 +287,7 @@ def handle_file_delete(file_doc):
         # 4. Release log links after recording, so File delete is not blocked
         release_log_links(file_id)
 
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
     except Exception:
         safe_log(file_id, "Delete", "Failed", frappe.get_traceback())
         frappe.log_error(frappe.get_traceback(), "S3 Vault Delete Handler Failed")

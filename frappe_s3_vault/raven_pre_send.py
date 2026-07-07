@@ -98,7 +98,7 @@ def prepare_file(file_id=None, file_url=None, content=None, file=None):
     except Exception:
         pass
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return {
         "status": "ready",

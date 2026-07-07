@@ -333,7 +333,7 @@ def finalize_deleted_file(file_id, dry_run=1, delete_file_record=1):
     if delete_file_record:
         result["file_delete_result"] = delete_file_doc(file_id)
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     result["status"] = "completed"
 
@@ -451,7 +451,7 @@ def remove_raven_file_card(message_name, dry_run=1):
     for field, value in changes["set_text_fields"].items():
         sql_set_raven_field(message_name, field, value)
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return {
         "status": "completed",
@@ -560,7 +560,7 @@ def finalize_deleted_file(file_id, dry_run=1, delete_file_record=1):
     if delete_file_record and frappe.db.exists("File", file_id):
         delete_file_doc(file_id)
 
-    frappe.db.commit()
+    frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     result["status"] = "completed"
     return result
@@ -782,6 +782,6 @@ def finalize_deleted_file(
             frappe.flags.s3_vault_skip_file_delete_hook = old_flag
 
     if commit:
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
 
     return out

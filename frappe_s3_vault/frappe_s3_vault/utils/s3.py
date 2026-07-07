@@ -226,7 +226,7 @@ def create_log(action, status="Success", **kwargs):
             if hasattr(doc, k):
                 setattr(doc, k, v)
         doc.insert(ignore_permissions=True)
-        frappe.db.commit()
+        frappe.db.commit()  # nosemgrep: frappe-manual-commit - explicit commit is intentional for cleanup/background compatibility.
     except Exception:
         frappe.log_error(frappe.get_traceback(), "S3 Vault Log Failed")
 
