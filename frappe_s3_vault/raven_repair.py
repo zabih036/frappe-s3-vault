@@ -115,7 +115,13 @@ def replace_in_text(value, old_values, new_value):
     return result
 
 
-def repair_raven_for_file(file_name):
+
+def _doctype_from_raven_table(table):
+    table = str(table or "")
+    if table.startswith("tab"):
+        return table[3:]
+    return table
+\n\ndef repair_raven_for_file(file_name):
     file_doc = frappe.get_doc("File", file_name)
 
     vault_name = frappe.db.get_value(
@@ -144,10 +150,15 @@ def repair_raven_for_file(file_name):
         if not columns:
             continue
 
-        select_cols = ", ".join([qname("name")] + [qname(c) for c in columns])
+        doctype = _doctype_from_raven_table(table)
 
         try:
-            rows = frappe.db.sql(f"select {select_cols} from {qname(table)}", as_dict=True)
+            rows = frappe.get_all(
+                doctype,
+                fields=["name"] + columns,
+                limit_page_length=0,
+                ignore_permissions=True,
+            )
         except Exception:
             continue
 
@@ -162,11 +173,11 @@ def repair_raven_for_file(file_name):
                     updates[col] = new_text
 
             if updates:
-                set_clause = ", ".join([f"{qname(k)}=%s" for k in updates])
-                params = list(updates.values()) + [row.name]
-                frappe.db.sql(
-                    f"update {qname(table)} set {set_clause} where name=%s",
-                    params,
+                frappe.db.set_value(
+                    doctype,
+                    row.name,
+                    updates,
+                    update_modified=False,
                 )
                 changed += 1
 

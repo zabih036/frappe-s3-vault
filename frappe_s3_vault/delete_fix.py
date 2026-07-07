@@ -150,7 +150,13 @@ def replace_deleted_refs(text, variants):
     return result
 
 
-def clean_raven_message_for_deleted_file(file_id):
+
+def _doctype_from_raven_table(table):
+    table = str(table or "")
+    if table.startswith("tab"):
+        return table[3:]
+    return table
+\n\ndef clean_raven_message_for_deleted_file(file_id):
     file_doc = None
 
     if frappe.db.exists("File", file_id):
@@ -171,10 +177,15 @@ def clean_raven_message_for_deleted_file(file_id):
         if not columns:
             continue
 
-        select_cols = ", ".join([qname("name")] + [qname(c) for c in columns])
+        doctype = _doctype_from_raven_table(table)
 
         try:
-            rows = frappe.db.sql(f"select {select_cols} from {qname(table)}", as_dict=True)
+            rows = frappe.get_all(
+                doctype,
+                fields=["name"] + columns,
+                limit_page_length=0,
+                ignore_permissions=True,
+            )
         except Exception:
             continue
 

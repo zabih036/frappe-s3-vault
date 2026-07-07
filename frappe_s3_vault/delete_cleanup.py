@@ -165,16 +165,10 @@ def clear_raven_attachment(file_id, file_doc=None, storage_doc=None, dry_run=1):
             continue
 
         try:
-            frappe.db.sql(
-                f"update {qname(table)} set {qname(field)}=NULL where name=%s",
-                message_name,
-            )
+            frappe.db.set_value("Raven Message", message_name, field, None, update_modified=False)
         except Exception:
             try:
-                frappe.db.sql(
-                    f"update {qname(table)} set {qname(field)}='' where name=%s",
-                    message_name,
-                )
+                frappe.db.set_value("Raven Message", message_name, field, "", update_modified=False)
             except Exception:
                 pass
 
@@ -198,10 +192,7 @@ def clear_raven_attachment(file_id, file_doc=None, storage_doc=None, dry_run=1):
 
         if new_value != str(current):
             try:
-                frappe.db.sql(
-                    f"update {qname(table)} set {qname(field)}=%s where name=%s",
-                    (new_value, message_name),
-                )
+                frappe.db.set_value("Raven Message", message_name, field, new_value, update_modified=False)
             except Exception:
                 pass
 
@@ -383,10 +374,7 @@ def sql_set_raven_field(message_name, fieldname, value):
     if not raven_column_exists(fieldname):
         return False
 
-    frappe.db.sql(
-        f"update `tabRaven Message` set `{fieldname}`=%s where name=%s",
-        (value, message_name),
-    )
+    frappe.db.set_value("Raven Message", message_name, fieldname, value, update_modified=False)
     return True
 
 

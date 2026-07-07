@@ -15,10 +15,7 @@ def sql_set(message_name, fieldname, value):
     if not raven_has_field(fieldname):
         return False
 
-    frappe.db.sql(
-        f"update `tabRaven Message` set `{fieldname}`=%s where name=%s",
-        (value, message_name),
-    )
+    frappe.db.set_value("Raven Message", message_name, fieldname, value, update_modified=False)
     return True
 
 
