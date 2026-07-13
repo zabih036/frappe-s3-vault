@@ -77,9 +77,29 @@ for _doctype in ["S3 Vault File", "S3 Vault Log"]:
         ignore_links_on_delete.append(_doctype)
 
 
-# Remove expired temporary ZIP archives created by S3 File Manager.
+# File-manager maintenance jobs.
 scheduler_events = {
     "hourly": [
         "frappe_s3_vault.file_manager_jobs.cleanup_expired_archives",
+        "frappe_s3_vault.file_manager_multipart.cleanup_expired_multipart_uploads",
+        "frappe_s3_vault.file_manager_index.enqueue_due_index_syncs",
     ]
+}
+
+
+# Phase 3 setup: standard file-manager roles.
+before_install = "frappe_s3_vault.setup.before_install"
+before_migrate = "frappe_s3_vault.setup.before_migrate"
+after_install = "frappe_s3_vault.setup.after_install"
+after_migrate = "frappe_s3_vault.setup.after_migrate"
+
+# Phase 3 record-level privacy for operation and multipart session records.
+permission_query_conditions = {
+    "S3 Vault Operation": "frappe_s3_vault.file_manager_permissions.operation_query_conditions",
+    "S3 Vault Multipart Upload": "frappe_s3_vault.file_manager_permissions.multipart_query_conditions",
+}
+
+has_permission = {
+    "S3 Vault Operation": "frappe_s3_vault.file_manager_permissions.operation_has_permission",
+    "S3 Vault Multipart Upload": "frappe_s3_vault.file_manager_permissions.multipart_has_permission",
 }

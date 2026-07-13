@@ -30,6 +30,17 @@ from frappe_s3_vault.file_manager_operations import (
     prepare_zip_plan,
 )
 
+class OperationCancelled(Exception):
+    """Raised at safe boundaries after the user requests cancellation."""
+
+
+def _check_cancelled(doc):
+    requested = frappe.db.get_value("S3 Vault Operation", doc.name, "cancellation_requested")
+    if cint(requested):
+        raise OperationCancelled(_("Operation cancelled by user."))
+
+
+
 
 def _save_operation(doc, commit: bool = True, **values):
     for fieldname, value in values.items():
@@ -62,6 +73,7 @@ def _progress_callback(doc):
     last_saved_at = time.monotonic()
 
     def update(object_delta: int, byte_delta: int, message: str | None = None):
+        _check_cancelled(doc)
         nonlocal processed_objects, processed_bytes
         nonlocal last_saved_objects, last_saved_bytes, last_saved_at
 
@@ -98,6 +110,7 @@ def _progress_callback(doc):
 
 
 def _prepare_doc(doc, total_objects: int, total_bytes: int, message: str):
+    _check_cancelled(doc)
     _save_operation(
         doc,
         status="Running",
@@ -165,6 +178,12 @@ def _run_transfer(doc, payload, mode: str):
         else:
             doc.destination_key = destination_prefix
 
+    try:
+        from frappe_s3_vault.file_manager_index import apply_transfer_index
+        apply_transfer_index(bucket, result.get("key_map") or {}, mode)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Index Update After Background Transfer")
+
     _complete(
         doc,
         _("{0} object(s) processed successfully").format(result["objects"]),
@@ -189,6 +208,12 @@ def _run_delete(doc, payload):
         user=payload.get("requested_by") or doc.started_by,
         progress=_progress_callback(doc),
     )
+    try:
+        from frappe_s3_vault.file_manager_index import remove_index_keys
+        remove_index_keys(bucket.name, [row["Key"] for row in plan])
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Index Update After Background Delete")
+
     _complete(
         doc,
         _("Deleted {0} object(s)").format(result["objects"]),
@@ -255,6 +280,28 @@ def _run_zip(doc, payload):
     )
 
 
+def _run_index_rebuild(doc, payload):
+    from frappe_s3_vault.file_manager_index import run_index_rebuild
+
+    _prepare_doc(doc, total_objects=1, total_bytes=0, message=_("Indexing bucket objects"))
+    result = run_index_rebuild(doc, payload, progress=_progress_callback(doc))
+    # The index has no known total before listing. Store the final useful totals.
+    _save_operation(
+        doc,
+        total_objects=int(result.get("objects") or 0) + int(result.get("folders") or 0),
+        processed_objects=int(result.get("objects") or 0) + int(result.get("folders") or 0),
+        total_size=str(int(result.get("bytes") or 0)),
+        processed_size=str(int(result.get("bytes") or 0)),
+        progress=100,
+    )
+    _complete(
+        doc,
+        _("Indexed {0} object(s) and {1} folder(s)").format(
+            result.get("objects") or 0, result.get("folders") or 0
+        ),
+    )
+
+
 def run_operation(operation_name: str):
     if not operation_name or not frappe.db.exists("S3 Vault Operation", operation_name):
         return
@@ -273,8 +320,19 @@ def run_operation(operation_name: str):
             _run_delete(doc, payload)
         elif doc.operation_type in {"Download Folder ZIP", "Bulk Download ZIP"}:
             _run_zip(doc, payload)
+        elif doc.operation_type == "Rebuild Object Index":
+            _run_index_rebuild(doc, payload)
         else:
             frappe.throw(_("Unsupported S3 Vault operation: {0}").format(doc.operation_type))
+    except OperationCancelled as exc:
+        _save_operation(
+            doc,
+            status="Cancelled",
+            completed_on=now_datetime(),
+            message=str(exc),
+            error_message=None,
+        )
+        return
     except Exception as exc:
         traceback_text = frappe.get_traceback()
         try:

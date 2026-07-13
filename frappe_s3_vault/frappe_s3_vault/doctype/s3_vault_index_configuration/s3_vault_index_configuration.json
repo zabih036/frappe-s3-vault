@@ -1,0 +1,178 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "field:connection",
+  "creation": "2026-07-13 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "field_order": [
+    "configuration_section",
+    "enabled",
+    "connection",
+    "sync_frequency",
+    "column_break_configuration",
+    "include_folder_rows",
+    "include_versions",
+    "status_section",
+    "status",
+    "last_sync_on",
+    "next_sync_on",
+    "column_break_status",
+    "object_count",
+    "folder_count",
+    "total_size",
+    "last_operation",
+    "error_message"
+  ],
+  "fields": [
+    {
+      "fieldname": "configuration_section",
+      "fieldtype": "Section Break",
+      "label": "Object Index Configuration"
+    },
+    {
+      "default": "0",
+      "fieldname": "enabled",
+      "fieldtype": "Check",
+      "in_list_view": 1,
+      "label": "Enabled"
+    },
+    {
+      "fieldname": "connection",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "S3 Connection",
+      "options": "S3 Vault Bucket",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "default": "Manual",
+      "fieldname": "sync_frequency",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Sync Frequency",
+      "options": "Manual\nEvery 6 Hours\nDaily\nWeekly",
+      "reqd": 1
+    },
+    {
+      "fieldname": "column_break_configuration",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "1",
+      "fieldname": "include_folder_rows",
+      "fieldtype": "Check",
+      "label": "Index Folder Rows"
+    },
+    {
+      "default": "0",
+      "fieldname": "include_versions",
+      "fieldtype": "Check",
+      "label": "Index Versions",
+      "description": "Reserved for reporting. The file manager version browser reads versions live from S3."
+    },
+    {
+      "fieldname": "status_section",
+      "fieldtype": "Section Break",
+      "label": "Last Sync"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Status",
+      "options": "Never Synced\nQueued\nRunning\nCompleted\nFailed\nCancelled",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_sync_on",
+      "fieldtype": "Datetime",
+      "label": "Last Sync On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "next_sync_on",
+      "fieldtype": "Datetime",
+      "label": "Next Sync On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_status",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "object_count",
+      "fieldtype": "Int",
+      "label": "Indexed Objects",
+      "read_only": 1
+    },
+    {
+      "fieldname": "folder_count",
+      "fieldtype": "Int",
+      "label": "Indexed Folders",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_size",
+      "fieldtype": "Data",
+      "label": "Indexed Bytes",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_operation",
+      "fieldtype": "Link",
+      "label": "Last Operation",
+      "options": "S3 Vault Operation",
+      "read_only": 1
+    },
+    {
+      "fieldname": "error_message",
+      "fieldtype": "Long Text",
+      "label": "Last Error",
+      "read_only": 1
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-07-13 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Index Configuration",
+  "naming_rule": "By fieldname",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Administrator",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "quick_entry": 0,
+  "sort_field": "connection",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1,
+  "search_fields": "connection,status"
+}

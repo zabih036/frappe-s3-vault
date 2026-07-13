@@ -1,0 +1,180 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "field:index_id",
+  "creation": "2026-07-13 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "field_order": [
+    "index_section",
+    "index_id",
+    "connection",
+    "bucket_name",
+    "is_folder",
+    "column_break_index",
+    "file_name",
+    "content_type",
+    "size",
+    "path_section",
+    "relative_key",
+    "parent_prefix",
+    "object_key",
+    "metadata_section",
+    "etag",
+    "last_modified",
+    "storage_class",
+    "indexed_on",
+    "index_run_id"
+  ],
+  "fields": [
+    {
+      "fieldname": "index_section",
+      "fieldtype": "Section Break",
+      "label": "Indexed Object"
+    },
+    {
+      "fieldname": "index_id",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Index ID",
+      "read_only": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "connection",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "S3 Connection",
+      "options": "S3 Vault Bucket",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "bucket_name",
+      "fieldtype": "Data",
+      "label": "Bucket Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "is_folder",
+      "fieldtype": "Check",
+      "in_list_view": 1,
+      "label": "Is Folder",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_index",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "file_name",
+      "fieldtype": "Small Text",
+      "in_list_view": 1,
+      "label": "Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "content_type",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Content Type",
+      "read_only": 1
+    },
+    {
+      "fieldname": "size",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Size (Bytes)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "path_section",
+      "fieldtype": "Section Break",
+      "label": "Path"
+    },
+    {
+      "fieldname": "relative_key",
+      "fieldtype": "Small Text",
+      "label": "Relative Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "parent_prefix",
+      "fieldtype": "Small Text",
+      "label": "Parent Prefix",
+      "read_only": 1
+    },
+    {
+      "fieldname": "object_key",
+      "fieldtype": "Small Text",
+      "label": "Storage Object Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "metadata_section",
+      "fieldtype": "Section Break",
+      "label": "Metadata"
+    },
+    {
+      "fieldname": "etag",
+      "fieldtype": "Data",
+      "label": "ETag",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_modified",
+      "fieldtype": "Datetime",
+      "label": "S3 Last Modified",
+      "read_only": 1
+    },
+    {
+      "fieldname": "storage_class",
+      "fieldtype": "Data",
+      "label": "Storage Class",
+      "read_only": 1
+    },
+    {
+      "fieldname": "indexed_on",
+      "fieldtype": "Datetime",
+      "label": "Indexed On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "index_run_id",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Index Run ID",
+      "read_only": 1
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-07-13 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Object Index",
+  "naming_rule": "By fieldname",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "role": "S3 Vault Administrator"
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "export": 1,
+      "role": "System Manager"
+    }
+  ],
+  "quick_entry": 0,
+  "sort_field": "last_modified",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 0,
+  "search_fields": "file_name,relative_key,content_type"
+}

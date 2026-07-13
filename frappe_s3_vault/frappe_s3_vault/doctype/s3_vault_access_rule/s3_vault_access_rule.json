@@ -1,0 +1,142 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "hash",
+  "creation": "2026-07-13 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "field_order": [
+    "access_section",
+    "enabled",
+    "connection",
+    "prefix",
+    "column_break_scope",
+    "principal_type",
+    "role",
+    "user",
+    "permission_section",
+    "permission_level",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "access_section",
+      "fieldtype": "Section Break",
+      "label": "Access Scope"
+    },
+    {
+      "default": "1",
+      "fieldname": "enabled",
+      "fieldtype": "Check",
+      "in_list_view": 1,
+      "label": "Enabled"
+    },
+    {
+      "fieldname": "connection",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "S3 Connection",
+      "options": "S3 Vault Bucket",
+      "reqd": 1
+    },
+    {
+      "fieldname": "prefix",
+      "fieldtype": "Small Text",
+      "in_list_view": 1,
+      "label": "Allowed Prefix",
+      "description": "Leave blank to allow the complete configured virtual root."
+    },
+    {
+      "fieldname": "column_break_scope",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "Role",
+      "fieldname": "principal_type",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Principal Type",
+      "options": "Role\nUser",
+      "reqd": 1
+    },
+    {
+      "depends_on": "eval:doc.principal_type==\"Role\"",
+      "fieldname": "role",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Role",
+      "mandatory_depends_on": "eval:doc.principal_type==\"Role\"",
+      "options": "Role"
+    },
+    {
+      "depends_on": "eval:doc.principal_type==\"User\"",
+      "fieldname": "user",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "User",
+      "mandatory_depends_on": "eval:doc.principal_type==\"User\"",
+      "options": "User"
+    },
+    {
+      "fieldname": "permission_section",
+      "fieldtype": "Section Break",
+      "label": "Permission Level"
+    },
+    {
+      "default": "S3 Vault Viewer",
+      "fieldname": "permission_level",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Maximum Permission Level",
+      "options": "S3 Vault Viewer\nS3 Vault Uploader\nS3 Vault Manager\nS3 Vault Administrator",
+      "reqd": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-07-13 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Access Rule",
+  "naming_rule": "Random",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Administrator",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "quick_entry": 0,
+  "sort_field": "connection",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1,
+  "search_fields": "connection,prefix,role,user,permission_level"
+}

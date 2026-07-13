@@ -642,6 +642,8 @@ def execute_transfer_plan(
         raise
 
     if mode == "move":
+        if progress:
+            progress(0, 0, _("Preparing source deletion"))
         errors = delete_storage_keys(bucket, [row["Key"] for row in plan])
         # All destinations are already present. Update managed attachment records
         # to the new keys even if a few source deletes fail; leftover sources are
@@ -713,6 +715,8 @@ def execute_delete_plan(
             ).format(linked_count)
         )
 
+    if progress:
+        progress(0, 0, _("Preparing deletion"))
     errors = delete_storage_keys(bucket, keys)
     failed_keys = {str(row.get("Key")) for row in errors if row.get("Key")}
     deleted_keys = [key for key in keys if key not in failed_keys]

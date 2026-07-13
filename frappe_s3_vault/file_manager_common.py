@@ -36,11 +36,11 @@ RUNNING_OPERATION_STATUSES = {"Queued", "Running"}
 
 
 def require_system_manager() -> None:
-    if "System Manager" not in frappe.get_roles():
-        frappe.throw(
-            _("Only a System Manager can use the S3 File Manager."),
-            frappe.PermissionError,
-        )
+    # Kept for Phase 1/2 compatibility. Phase 3 allows the dedicated S3 Vault
+    # roles and enforces connection/prefix permissions in each API.
+    from frappe_s3_vault.file_manager_permissions import require_page_access
+
+    require_page_access()
 
 
 def get_settings():
@@ -464,6 +464,9 @@ def operation_as_dict(doc) -> dict:
         "result_expires_on": iso(doc.result_expires_on),
         "result_deleted": cint(doc.result_deleted),
         "background_job_id": doc.background_job_id,
+        "cancellation_requested": cint(getattr(doc, "cancellation_requested", 0)),
+        "retry_of": getattr(doc, "retry_of", None),
+        "retry_count": cint(getattr(doc, "retry_count", 0)),
         "creation": iso(doc.creation),
         "modified": iso(doc.modified),
     }

@@ -35,6 +35,9 @@
     "column_break_timing",
     "result_deleted",
     "background_job_id",
+    "cancellation_requested",
+    "retry_of",
+    "retry_count",
     "details_section",
     "error_message",
     "operation_payload"
@@ -50,7 +53,7 @@
       "fieldtype": "Select",
       "in_list_view": 1,
       "label": "Operation Type",
-      "options": "Bulk Copy\nBulk Move\nBulk Delete\nRename Folder\nCopy Folder\nMove Folder\nDelete Folder\nDownload Folder ZIP\nBulk Download ZIP",
+      "options": "Bulk Copy\nBulk Move\nBulk Delete\nRename Folder\nCopy Folder\nMove Folder\nDelete Folder\nDownload Folder ZIP\nBulk Download ZIP\nRebuild Object Index",
       "read_only": 1,
       "reqd": 1
     },
@@ -218,6 +221,27 @@
       "read_only": 1
     },
     {
+      "default": "0",
+      "fieldname": "cancellation_requested",
+      "fieldtype": "Check",
+      "label": "Cancellation Requested",
+      "read_only": 1
+    },
+    {
+      "fieldname": "retry_of",
+      "fieldtype": "Link",
+      "label": "Retry Of",
+      "options": "S3 Vault Operation",
+      "read_only": 1
+    },
+    {
+      "default": "0",
+      "fieldname": "retry_count",
+      "fieldtype": "Int",
+      "label": "Retry Count",
+      "read_only": 1
+    },
+    {
       "fieldname": "details_section",
       "fieldtype": "Section Break",
       "label": "Technical Details"
@@ -258,6 +282,28 @@
       "role": "System Manager",
       "share": 1,
       "write": 0
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Viewer"
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Uploader"
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Manager"
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Administrator",
+      "delete": 1,
+      "export": 1
     }
   ],
   "quick_entry": 0,

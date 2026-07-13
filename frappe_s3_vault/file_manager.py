@@ -44,6 +44,16 @@ from frappe_s3_vault.file_manager_operations import (
     delete_file as delete_file_now,
     get_folder_summary as build_folder_summary,
     rename_or_transfer_file,
+    resolve_file_destination,
+)
+from frappe_s3_vault.file_manager_permissions import (
+    accessible_roots,
+    capabilities_for,
+    connection_access_payload,
+    ensure_paths,
+    is_admin,
+    require_access,
+    require_page_access,
 )
 
 ALLOWED_BACKGROUND_OPERATIONS = {
@@ -56,6 +66,7 @@ ALLOWED_BACKGROUND_OPERATIONS = {
     "Delete Folder",
     "Download Folder ZIP",
     "Bulk Download ZIP",
+    "Rebuild Object Index",
 }
 ALLOWED_CONFLICT_STRATEGIES = {"fail", "replace", "keep_both"}
 
@@ -74,11 +85,11 @@ def _linked_payload(row: dict | None) -> dict | None:
 
 
 def _operation_doc(operation_name: str):
-    require_system_manager()
+    require_page_access()
     if not operation_name or not frappe.db.exists("S3 Vault Operation", operation_name):
         frappe.throw(_("S3 Vault Operation does not exist."))
     doc = frappe.get_doc("S3 Vault Operation", operation_name)
-    if doc.started_by != frappe.session.user and "System Manager" not in frappe.get_roles():
+    if doc.started_by != frappe.session.user and not is_admin():
         frappe.throw(_("You cannot view this operation."), frappe.PermissionError)
     return doc
 
@@ -134,40 +145,80 @@ def _create_operation(
     return operation_as_dict(doc)
 
 
+def _sync_index_after_object_change(bucket, storage_keys=None, deleted_keys=None):
+    try:
+        from frappe_s3_vault.file_manager_index import remove_index_keys, sync_single_object
+
+        for key in storage_keys or []:
+            sync_single_object(bucket, key)
+        if deleted_keys:
+            remove_index_keys(bucket.name, deleted_keys)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "S3 Vault Object Index Live Update")
+
+
+def _authorize_items(connection: str, items: list[dict], capability: str):
+    ensure_paths(connection, [row.get("key") or "" for row in items], capability)
+
+
+def _authorize_background_request(
+    connection: str,
+    operation_type: str,
+    items: list[dict],
+    source_prefix: str,
+    destination_prefix: str,
+):
+    if operation_type == "Rebuild Object Index":
+        root = accessible_roots(connection)[0]
+        require_access(connection, root, "index_rebuild")
+        return
+    if operation_type in {"Bulk Copy", "Copy Folder"}:
+        _authorize_items(connection, items, "copy")
+        require_access(connection, destination_prefix, "copy")
+    elif operation_type in {"Bulk Move", "Move Folder", "Rename Folder"}:
+        _authorize_items(connection, items, "move")
+        require_access(connection, destination_prefix, "move")
+    elif operation_type in {"Bulk Delete", "Delete Folder"}:
+        _authorize_items(connection, items, "delete")
+    elif operation_type in {"Download Folder ZIP", "Bulk Download ZIP"}:
+        _authorize_items(connection, items, "zip")
+
+
 @frappe.whitelist()
 def get_connections():
-    """Return enabled S3 connections without exposing credentials."""
-    require_system_manager()
-
+    """Return only enabled connections that the current user may access."""
+    require_page_access()
     rows = frappe.get_all(
         "S3 Vault Bucket",
         filters={"enabled": 1},
         fields=[
-            "name",
-            "bucket_title",
-            "bucket_name",
-            "provider_type",
-            "region",
-            "endpoint_url",
-            "base_prefix",
-            "is_default",
+            "name", "bucket_title", "bucket_name", "provider_type", "region",
+            "endpoint_url", "base_prefix", "is_default",
         ],
         order_by="is_default desc, bucket_title asc",
     )
+    accessible = []
+    for row in rows:
+        payload = connection_access_payload(row.name)
+        if not payload["access_roots"]:
+            continue
+        item = dict(row)
+        item.update(payload)
+        accessible.append(item)
 
     settings = get_settings()
     default_connection = getattr(settings, "default_bucket", None) if settings else None
-
-    enabled_names = {row.name for row in rows}
-    if default_connection not in enabled_names:
-        default_connection = next((row.name for row in rows if cint(row.is_default)), None)
-
-    if not default_connection and rows:
-        default_connection = rows[0].name
-
+    names = {row["name"] for row in accessible}
+    if default_connection not in names:
+        default_connection = next(
+            (row["name"] for row in accessible if cint(row.get("is_default"))), None
+        )
+    if not default_connection and accessible:
+        default_connection = accessible[0]["name"]
     return {
-        "connections": rows,
+        "connections": accessible,
         "default_connection": default_connection,
+        "user_is_admin": is_admin(),
     }
 
 
@@ -178,14 +229,13 @@ def list_objects(
     continuation_token: str | None = None,
     page_size: int = DEFAULT_LIST_PAGE_SIZE,
 ):
-    """List immediate folders and files below a relative prefix."""
-    bucket = get_bucket(connection)
-    client = get_s3_client(bucket)
-
+    """List immediate folders and files below an authorized relative prefix."""
     relative_prefix = normalize_relative_path(prefix, folder=bool(prefix))
+    require_access(connection, relative_prefix, "browse")
+    bucket = get_bucket(connection, check_permission=False)
+    client = get_s3_client(bucket)
     storage_prefix = full_key(bucket, relative_prefix, folder=bool(relative_prefix))
     page_size = max(1, min(cint(page_size) or DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE))
-
     params = {
         "Bucket": bucket.bucket_name,
         "Prefix": storage_prefix,
@@ -194,7 +244,6 @@ def list_objects(
     }
     if continuation_token:
         params["ContinuationToken"] = continuation_token
-
     response = client.list_objects_v2(**params)
 
     folders = []
@@ -202,50 +251,41 @@ def list_objects(
         storage_folder_key = item.get("Prefix") or ""
         relative_folder_key = relative_key(bucket, storage_folder_key)
         folder_name = folder_basename(relative_folder_key)
-        if folder_name:
-            folders.append(
-                {
-                    "name": folder_name,
-                    "key": relative_folder_key,
-                    "type": "folder",
-                }
-            )
+        if folder_name and not relative_folder_key.startswith(".s3-vault-temp/"):
+            folders.append({
+                "name": folder_name,
+                "key": relative_folder_key,
+                "type": "folder",
+                "capabilities": capabilities_for(connection, relative_folder_key),
+            })
 
-    file_rows = []
-    storage_file_keys = []
+    file_rows, storage_file_keys = [], []
     for item in response.get("Contents", []):
         storage_object_key = item.get("Key") or ""
-        if (
-            not storage_object_key
-            or storage_object_key == storage_prefix
-            or storage_object_key.endswith("/")
-        ):
+        if not storage_object_key or storage_object_key == storage_prefix or storage_object_key.endswith("/"):
             continue
-
         relative_object_key = relative_key(bucket, storage_object_key)
+        if relative_object_key.startswith(".s3-vault-temp/"):
+            continue
         filename = basename(relative_object_key)
         storage_file_keys.append(storage_object_key)
-        file_rows.append(
-            {
-                "name": filename,
-                "key": relative_object_key,
-                "storage_key": storage_object_key,
-                "type": "file",
-                "size": cint(item.get("Size")),
-                "last_modified": iso(item.get("LastModified")),
-                "etag": str(item.get("ETag") or "").strip('"'),
-                "storage_class": item.get("StorageClass"),
-                "content_type": content_type_for_name(filename),
-            }
-        )
-
+        file_rows.append({
+            "name": filename,
+            "key": relative_object_key,
+            "storage_key": storage_object_key,
+            "type": "file",
+            "size": cint(item.get("Size")),
+            "last_modified": iso(item.get("LastModified")),
+            "etag": str(item.get("ETag") or "").strip('"'),
+            "storage_class": item.get("StorageClass"),
+            "content_type": content_type_for_name(filename),
+            "capabilities": capabilities_for(connection, relative_object_key),
+        })
     linked = linked_records_for_keys(bucket, storage_file_keys)
     for row in file_rows:
         row["linked"] = _linked_payload((linked.get(row.pop("storage_key")) or [None])[0])
-
     folders.sort(key=lambda row: row["name"].lower())
     file_rows.sort(key=lambda row: row["name"].lower())
-
     return {
         "connection": bucket.name,
         "bucket_title": bucket.bucket_title,
@@ -258,102 +298,67 @@ def list_objects(
         "is_truncated": bool(response.get("IsTruncated")),
         "next_token": response.get("NextContinuationToken"),
         "key_count": cint(response.get("KeyCount")),
+        "capabilities": capabilities_for(connection, relative_prefix),
+        "access_roots": accessible_roots(connection),
     }
 
 
 @frappe.whitelist()
-def list_folders(
-    connection: str,
-    prefix: str | None = "",
-):
-    """Small folder-only response used by destination picker dialogs."""
-    result = list_objects(
-        connection=connection,
-        prefix=prefix,
-        page_size=MAX_LIST_PAGE_SIZE,
-    )
+def list_folders(connection: str, prefix: str | None = ""):
+    result = list_objects(connection=connection, prefix=prefix, page_size=MAX_LIST_PAGE_SIZE)
     return {
         "prefix": result["prefix"],
         "folders": result["folders"],
         "is_truncated": result["is_truncated"],
+        "capabilities": result["capabilities"],
     }
 
 
 @frappe.whitelist()
 def create_folder(connection: str, prefix: str | None, folder_name: str):
-    bucket = get_bucket(connection)
-    client = get_s3_client(bucket)
-
     parent = normalize_relative_path(prefix, folder=bool(prefix))
     folder_name = safe_folder_name(folder_name)
     relative_folder = normalize_relative_path(f"{parent}{folder_name}", folder=True)
+    require_access(connection, relative_folder, "create_folder")
+    bucket = get_bucket(connection, check_permission=False)
+    client = get_s3_client(bucket)
     storage_folder = full_key(bucket, relative_folder, folder=True)
-
     if folder_exists(client, bucket.bucket_name, storage_folder):
         frappe.throw(_("Folder {0} already exists.").format(folder_name))
-
-    client.put_object(
-        Bucket=bucket.bucket_name,
-        Key=storage_folder,
-        Body=b"",
-        ContentType="application/x-directory",
-    )
-    manager_log(
-        action="Upload",
-        bucket=bucket,
-        object_key=storage_folder,
-        message="S3 File Manager created a folder marker",
-        user=frappe.session.user,
-    )
+    client.put_object(Bucket=bucket.bucket_name, Key=storage_folder, Body=b"", ContentType="application/x-directory")
+    manager_log(action="Upload", bucket=bucket, object_key=storage_folder,
+                message="S3 File Manager created a folder marker", user=frappe.session.user)
+    _sync_index_after_object_change(bucket, storage_keys=[storage_folder])
     return {"name": folder_name, "key": relative_folder}
 
 
 @frappe.whitelist()
-def get_object_url(
-    connection: str,
-    key: str,
-    disposition: str = "inline",
-):
-    bucket = get_bucket(connection)
-    client = get_s3_client(bucket)
-
+def get_object_url(connection: str, key: str, disposition: str = "inline"):
     relative_object_key = normalize_relative_path(key)
     if not relative_object_key:
         frappe.throw(_("Object key is required."))
-
+    mode = "attachment" if disposition == "attachment" else "inline"
+    require_access(connection, relative_object_key, "download" if mode == "attachment" else "preview")
+    bucket = get_bucket(connection, check_permission=False)
+    client = get_s3_client(bucket)
     storage_key = full_key(bucket, relative_object_key)
     metadata = client.head_object(Bucket=bucket.bucket_name, Key=storage_key)
-
-    mode = "attachment" if disposition == "attachment" else "inline"
     filename = safe_file_name(os.path.basename(relative_object_key))
-    response_disposition = f"{mode}; filename*=UTF-8''{quote(filename)}"
     expiry = url_expiry()
-
     url = client.generate_presigned_url(
         "get_object",
         Params={
             "Bucket": bucket.bucket_name,
             "Key": storage_key,
-            "ResponseContentDisposition": response_disposition,
+            "ResponseContentDisposition": f"{mode}; filename*=UTF-8''{quote(filename)}",
         },
         ExpiresIn=expiry,
     )
-
-    manager_log(
-        action="Download" if mode == "attachment" else "Preview",
-        bucket=bucket,
-        object_key=storage_key,
-        user=frappe.session.user,
-    )
-
+    manager_log(action="Download" if mode == "attachment" else "Preview", bucket=bucket,
+                object_key=storage_key, user=frappe.session.user)
     return {
-        "url": url,
-        "expires_in": expiry,
-        "name": filename,
-        "key": relative_object_key,
-        "content_type": metadata.get("ContentType")
-        or mimetypes.guess_type(filename)[0]
-        or "application/octet-stream",
+        "url": url, "expires_in": expiry, "name": filename, "key": relative_object_key,
+        "content_type": metadata.get("ContentType") or mimetypes.guess_type(filename)[0] or "application/octet-stream",
         "size": cint(metadata.get("ContentLength")),
         "etag": str(metadata.get("ETag") or "").strip('"'),
         "last_modified": iso(metadata.get("LastModified")),
@@ -362,49 +367,40 @@ def get_object_url(
 
 @frappe.whitelist()
 def get_object_details(connection: str, key: str):
-    bucket = get_bucket(connection)
-    client = get_s3_client(bucket)
     relative_object_key = normalize_relative_path(key)
+    require_access(connection, relative_object_key, "browse")
+    bucket = get_bucket(connection, check_permission=False)
+    client = get_s3_client(bucket)
     storage_key = full_key(bucket, relative_object_key)
     metadata = client.head_object(Bucket=bucket.bucket_name, Key=storage_key)
     linked = first_linked_record(bucket, storage_key)
-
     tags = []
     try:
-        tags = client.get_object_tagging(
-            Bucket=bucket.bucket_name,
-            Key=storage_key,
-        ).get("TagSet", [])
+        tags = client.get_object_tagging(Bucket=bucket.bucket_name, Key=storage_key).get("TagSet", [])
     except Exception:
         pass
-
     return {
-        "name": basename(relative_object_key),
-        "key": relative_object_key,
+        "name": basename(relative_object_key), "key": relative_object_key,
         "size": cint(metadata.get("ContentLength")),
         "content_type": metadata.get("ContentType") or content_type_for_name(relative_object_key),
         "last_modified": iso(metadata.get("LastModified")),
         "etag": str(metadata.get("ETag") or "").strip('"'),
-        "version_id": metadata.get("VersionId"),
-        "cache_control": metadata.get("CacheControl"),
+        "version_id": metadata.get("VersionId"), "cache_control": metadata.get("CacheControl"),
         "content_disposition": metadata.get("ContentDisposition"),
         "server_side_encryption": metadata.get("ServerSideEncryption"),
-        "storage_class": metadata.get("StorageClass"),
-        "metadata": metadata.get("Metadata") or {},
-        "tags": tags,
-        "linked": _linked_payload(linked),
+        "storage_class": metadata.get("StorageClass"), "metadata": metadata.get("Metadata") or {},
+        "tags": tags, "linked": _linked_payload(linked),
+        "capabilities": capabilities_for(connection, relative_object_key),
     }
 
 
 @frappe.whitelist()
-def get_folder_summary(
-    connection: str,
-    prefix: str,
-    max_objects: int = MAX_FOLDER_SUMMARY_OBJECTS,
-):
-    bucket = get_bucket(connection)
+def get_folder_summary(connection: str, prefix: str, max_objects: int = MAX_FOLDER_SUMMARY_OBJECTS):
+    relative_prefix = normalize_relative_path(prefix, folder=True)
+    require_access(connection, relative_prefix, "browse")
+    bucket = get_bucket(connection, check_permission=False)
     max_objects = max(1, min(cint(max_objects) or MAX_FOLDER_SUMMARY_OBJECTS, 50_000))
-    summary = build_folder_summary(bucket, prefix, max_objects)
+    summary = build_folder_summary(bucket, relative_prefix, max_objects)
     summary["formatted_size"] = format_bytes(summary["total_bytes"])
     return summary
 
@@ -417,263 +413,186 @@ def create_upload_session(
     content_type: str | None = None,
     file_size: int = 0,
     overwrite: int = 0,
+    relative_path: str | None = None,
+    conflict_strategy: str = "fail",
 ):
-    bucket = get_bucket(connection)
-    client = get_s3_client(bucket)
-
     parent = normalize_relative_path(prefix, folder=bool(prefix))
     filename = safe_file_name(filename)
     file_size = cint(file_size)
-
     if file_size <= 0:
         frappe.throw(_("The selected file is empty."))
     if file_size > MAX_DIRECT_UPLOAD_BYTES:
-        frappe.throw(
-            _("Direct upload is limited to 500 MB per file. Multipart upload is planned for Phase 3.")
-        )
-
+        frappe.throw(_("Use multipart upload for files larger than 500 MB."))
     extension = os.path.splitext(filename)[1].lower().lstrip(".")
     if extension and extension in blocked_extensions():
         frappe.throw(_("File type .{0} is blocked by S3 Vault Settings.").format(extension))
-
-    relative_object_key = normalize_relative_path(f"{parent}{filename}")
-    storage_key = full_key(bucket, relative_object_key)
-
-    if not cint(overwrite) and object_exists(client, bucket.bucket_name, storage_key):
-        frappe.throw(_("A file named {0} already exists in this folder.").format(filename))
-
-    content_type = (
-        str(content_type or "").strip()
-        or mimetypes.guess_type(filename)[0]
-        or "application/octet-stream"
-    )
+    supplied = normalize_relative_path(relative_path or filename)
+    if supplied:
+        parts = supplied.split("/")
+        parts[-1] = filename
+        supplied = "/".join(parts)
+    relative_object_key = normalize_relative_path(f"{parent}{supplied or filename}")
+    require_access(connection, relative_object_key, "upload")
+    bucket = get_bucket(connection, check_permission=False)
+    client = get_s3_client(bucket)
+    strategy = "replace" if cint(overwrite) else conflict_strategy
+    if strategy not in ALLOWED_CONFLICT_STRATEGIES:
+        frappe.throw(_("Invalid conflict strategy."))
+    storage_key = resolve_file_destination(bucket, relative_object_key, strategy)
+    relative_object_key = relative_key(bucket, storage_key)
+    content_type = str(content_type or "").strip() or mimetypes.guess_type(filename)[0] or "application/octet-stream"
     expiry = min(url_expiry(), 900)
     upload_url = client.generate_presigned_url(
         "put_object",
-        Params={
-            "Bucket": bucket.bucket_name,
-            "Key": storage_key,
-            "ContentType": content_type,
-        },
+        Params={"Bucket": bucket.bucket_name, "Key": storage_key, "ContentType": content_type},
         ExpiresIn=expiry,
     )
-
     return {
-        "upload_url": upload_url,
-        "method": "PUT",
-        "headers": {"Content-Type": content_type},
-        "expires_in": expiry,
-        "name": filename,
-        "key": relative_object_key,
-        "expected_size": file_size,
-        "content_type": content_type,
+        "upload_url": upload_url, "method": "PUT", "headers": {"Content-Type": content_type},
+        "expires_in": expiry, "name": basename(relative_object_key), "key": relative_object_key,
+        "expected_size": file_size, "content_type": content_type,
     }
 
 
 @frappe.whitelist()
 def complete_upload(connection: str, key: str, expected_size: int = 0):
-    bucket = get_bucket(connection)
-    client = get_s3_client(bucket)
     relative_object_key = normalize_relative_path(key)
+    require_access(connection, relative_object_key, "upload")
+    bucket = get_bucket(connection, check_permission=False)
+    client = get_s3_client(bucket)
     storage_key = full_key(bucket, relative_object_key)
     metadata = client.head_object(Bucket=bucket.bucket_name, Key=storage_key)
-
     actual_size = cint(metadata.get("ContentLength"))
     expected_size = cint(expected_size)
     if expected_size and actual_size != expected_size:
-        frappe.throw(
-            _("Upload size verification failed. Expected {0} bytes but S3 contains {1} bytes.").format(
-                expected_size,
-                actual_size,
-            )
-        )
-
-    manager_log(
-        action="Upload",
-        bucket=bucket,
-        object_key=storage_key,
-        user=frappe.session.user,
-    )
+        frappe.throw(_("Upload size verification failed. Expected {0} bytes but S3 contains {1} bytes.").format(expected_size, actual_size))
+    manager_log(action="Upload", bucket=bucket, object_key=storage_key, user=frappe.session.user)
+    _sync_index_after_object_change(bucket, storage_keys=[storage_key])
     filename = basename(relative_object_key)
     return {
-        "name": filename,
-        "key": relative_object_key,
-        "size": actual_size,
+        "name": filename, "key": relative_object_key, "size": actual_size,
         "content_type": metadata.get("ContentType") or content_type_for_name(filename),
         "etag": str(metadata.get("ETag") or "").strip('"'),
         "last_modified": iso(metadata.get("LastModified")),
+        "version_id": metadata.get("VersionId"),
     }
 
 
 @frappe.whitelist()
-def rename_file(
-    connection: str,
-    key: str,
-    new_name: str,
-    conflict_strategy: str = "fail",
-    update_linked_record: int = 1,
-):
-    bucket = get_bucket(connection)
+def rename_file(connection: str, key: str, new_name: str, conflict_strategy: str = "fail", update_linked_record: int = 1):
+    source = normalize_relative_path(key)
+    parent = source.rsplit("/", 1)[0] + "/" if "/" in source else ""
+    destination = normalize_relative_path(f"{parent}{safe_file_name(new_name)}")
+    require_access(connection, source, "rename")
+    require_access(connection, destination, "rename")
+    bucket = get_bucket(connection, check_permission=False)
     if conflict_strategy not in ALLOWED_CONFLICT_STRATEGIES:
         frappe.throw(_("Invalid conflict strategy."))
-    return rename_or_transfer_file(
-        bucket=bucket,
-        source_relative_key=key,
-        destination_parent=normalize_relative_path(key).rsplit("/", 1)[0] + "/"
-        if "/" in normalize_relative_path(key)
-        else "",
-        new_name=new_name,
-        mode="move",
-        conflict_strategy=conflict_strategy,
-        update_linked_record=bool(cint(update_linked_record)),
-        user=frappe.session.user,
-    )
+    result = rename_or_transfer_file(bucket=bucket, source_relative_key=source,
+        destination_parent=parent, new_name=new_name, mode="move",
+        conflict_strategy=conflict_strategy, update_linked_record=bool(cint(update_linked_record)),
+        user=frappe.session.user)
+    _sync_index_after_object_change(bucket, storage_keys=[full_key(bucket, result["destination_key"])], deleted_keys=[full_key(bucket, source)])
+    return result
 
 
 @frappe.whitelist()
-def copy_file(
-    connection: str,
-    key: str,
-    destination_prefix: str,
-    new_name: str | None = None,
-    conflict_strategy: str = "fail",
-):
-    bucket = get_bucket(connection)
+def copy_file(connection: str, key: str, destination_prefix: str, new_name: str | None = None, conflict_strategy: str = "fail"):
+    source = normalize_relative_path(key)
+    destination_parent = normalize_relative_path(destination_prefix, folder=bool(destination_prefix))
+    destination = normalize_relative_path(f"{destination_parent}{safe_file_name(new_name or basename(source))}")
+    require_access(connection, source, "copy")
+    require_access(connection, destination, "copy")
+    bucket = get_bucket(connection, check_permission=False)
     if conflict_strategy not in ALLOWED_CONFLICT_STRATEGIES:
         frappe.throw(_("Invalid conflict strategy."))
-    return rename_or_transfer_file(
-        bucket=bucket,
-        source_relative_key=key,
-        destination_parent=destination_prefix,
-        new_name=new_name,
-        mode="copy",
-        conflict_strategy=conflict_strategy,
-        update_linked_record=False,
-        user=frappe.session.user,
-    )
+    result = rename_or_transfer_file(bucket=bucket, source_relative_key=source,
+        destination_parent=destination_parent, new_name=new_name, mode="copy",
+        conflict_strategy=conflict_strategy, update_linked_record=False, user=frappe.session.user)
+    _sync_index_after_object_change(bucket, storage_keys=[full_key(bucket, result["destination_key"])])
+    return result
 
 
 @frappe.whitelist()
-def move_file(
-    connection: str,
-    key: str,
-    destination_prefix: str,
-    new_name: str | None = None,
-    conflict_strategy: str = "fail",
-    update_linked_record: int = 1,
-):
-    bucket = get_bucket(connection)
+def move_file(connection: str, key: str, destination_prefix: str, new_name: str | None = None,
+              conflict_strategy: str = "fail", update_linked_record: int = 1):
+    source = normalize_relative_path(key)
+    destination_parent = normalize_relative_path(destination_prefix, folder=bool(destination_prefix))
+    destination = normalize_relative_path(f"{destination_parent}{safe_file_name(new_name or basename(source))}")
+    require_access(connection, source, "move")
+    require_access(connection, destination, "move")
+    bucket = get_bucket(connection, check_permission=False)
     if conflict_strategy not in ALLOWED_CONFLICT_STRATEGIES:
         frappe.throw(_("Invalid conflict strategy."))
-    return rename_or_transfer_file(
-        bucket=bucket,
-        source_relative_key=key,
-        destination_parent=destination_prefix,
-        new_name=new_name,
-        mode="move",
-        conflict_strategy=conflict_strategy,
-        update_linked_record=bool(cint(update_linked_record)),
-        user=frappe.session.user,
-    )
+    result = rename_or_transfer_file(bucket=bucket, source_relative_key=source,
+        destination_parent=destination_parent, new_name=new_name, mode="move",
+        conflict_strategy=conflict_strategy, update_linked_record=bool(cint(update_linked_record)),
+        user=frappe.session.user)
+    _sync_index_after_object_change(bucket, storage_keys=[full_key(bucket, result["destination_key"])], deleted_keys=[full_key(bucket, source)])
+    return result
 
 
 @frappe.whitelist()
-def delete_file(
-    connection: str,
-    key: str,
-    allow_linked_delete: int = 0,
-    confirmation: str | None = None,
-):
-    bucket = get_bucket(connection)
-    filename = basename(key)
+def delete_file(connection: str, key: str, allow_linked_delete: int = 0, confirmation: str | None = None):
+    source = normalize_relative_path(key)
+    require_access(connection, source, "delete")
+    bucket = get_bucket(connection, check_permission=False)
+    filename = basename(source)
     if confirmation != filename:
         frappe.throw(_("Type the exact file name to confirm deletion."))
-    return delete_file_now(
-        bucket=bucket,
-        source_relative_key=key,
-        allow_linked_delete=bool(cint(allow_linked_delete)),
-        user=frappe.session.user,
-    )
+    result = delete_file_now(bucket=bucket, source_relative_key=source,
+        allow_linked_delete=bool(cint(allow_linked_delete)), user=frappe.session.user)
+    _sync_index_after_object_change(bucket, deleted_keys=[full_key(bucket, source)])
+    return result
 
 
 @frappe.whitelist()
 def create_background_operation(
-    connection: str,
-    operation_type: str,
-    items=None,
-    source_prefix: str | None = None,
-    destination_prefix: str | None = None,
-    new_name: str | None = None,
-    conflict_strategy: str = "fail",
-    update_linked_records: int = 1,
-    allow_linked_delete: int = 0,
-    confirmation: str | None = None,
+    connection: str, operation_type: str, items=None, source_prefix: str | None = None,
+    destination_prefix: str | None = None, new_name: str | None = None,
+    conflict_strategy: str = "fail", update_linked_records: int = 1,
+    allow_linked_delete: int = 0, confirmation: str | None = None,
 ):
-    bucket = get_bucket(connection)
+    require_page_access()
+    bucket = get_bucket(connection, check_permission=False)
     operation_type = str(operation_type or "").strip()
     if operation_type not in ALLOWED_BACKGROUND_OPERATIONS:
         frappe.throw(_("Unsupported operation type."))
     if conflict_strategy not in ALLOWED_CONFLICT_STRATEGIES:
         frappe.throw(_("Invalid conflict strategy."))
-
     selected_items = parse_items(items)
-    source_prefix = normalize_relative_path(
-        source_prefix,
-        folder=bool(source_prefix),
-    )
-    destination_prefix = normalize_relative_path(
-        destination_prefix,
-        folder=bool(destination_prefix),
-    )
+    source_prefix = normalize_relative_path(source_prefix, folder=bool(source_prefix))
+    destination_prefix = normalize_relative_path(destination_prefix, folder=bool(destination_prefix))
 
-    if operation_type in {
-        "Rename Folder",
-        "Copy Folder",
-        "Move Folder",
-        "Delete Folder",
-        "Download Folder ZIP",
-    }:
+    if operation_type in {"Rename Folder", "Copy Folder", "Move Folder", "Delete Folder", "Download Folder ZIP"}:
         if not source_prefix:
             frappe.throw(_("Source folder is required."))
         source_name = folder_basename(source_prefix)
         selected_items = [{"type": "folder", "key": source_prefix, "name": source_name}]
-
     if operation_type in {"Rename Folder", "Copy Folder", "Move Folder"}:
         if operation_type == "Rename Folder":
             new_name = safe_folder_name(new_name)
-            destination_prefix = (
-                source_prefix.rstrip("/").rsplit("/", 1)[0] + "/"
-                if "/" in source_prefix.rstrip("/")
-                else ""
-            )
+            destination_prefix = source_prefix.rstrip("/").rsplit("/", 1)[0] + "/" if "/" in source_prefix.rstrip("/") else ""
         if not new_name and operation_type != "Rename Folder":
             new_name = None
-
-    if operation_type in {"Bulk Copy", "Bulk Move", "Bulk Delete", "Bulk Download ZIP"}:
-        if not selected_items:
-            frappe.throw(_("Select at least one file or folder."))
-
+    if operation_type in {"Bulk Copy", "Bulk Move", "Bulk Delete", "Bulk Download ZIP"} and not selected_items:
+        frappe.throw(_("Select at least one file or folder."))
     if operation_type in {"Delete Folder", "Bulk Delete"}:
         expected = folder_basename(source_prefix) if operation_type == "Delete Folder" else "DELETE"
         if confirmation != expected:
             frappe.throw(_("Deletion confirmation does not match."))
 
+    _authorize_background_request(connection, operation_type, selected_items, source_prefix, destination_prefix)
     payload = {
-        "items": selected_items,
-        "destination_prefix": destination_prefix,
-        "new_name": new_name,
-        "conflict_strategy": conflict_strategy,
+        "items": selected_items, "destination_prefix": destination_prefix,
+        "new_name": new_name, "conflict_strategy": conflict_strategy,
         "update_linked_records": bool(cint(update_linked_records)),
         "allow_linked_delete": bool(cint(allow_linked_delete)),
         "requested_by": frappe.session.user,
     }
-    return _create_operation(
-        operation_type=operation_type,
-        bucket=bucket,
+    return _create_operation(operation_type=operation_type, bucket=bucket,
         source_key=source_prefix or (selected_items[0]["key"] if len(selected_items) == 1 else None),
-        destination_key=destination_prefix or None,
-        payload=payload,
-    )
+        destination_key=destination_prefix or None, payload=payload)
 
 
 @frappe.whitelist()
@@ -683,17 +602,16 @@ def get_operation_status(operation_name: str):
 
 @frappe.whitelist()
 def get_recent_operations(connection: str | None = None, limit: int = 10):
-    require_system_manager()
+    require_page_access()
     filters = {}
     if connection:
+        if not accessible_roots(connection):
+            frappe.throw(_("You cannot access this connection."), frappe.PermissionError)
         filters["connection"] = connection
-    rows = frappe.get_all(
-        "S3 Vault Operation",
-        filters=filters,
-        fields=["name"],
-        order_by="creation desc",
-        limit=max(1, min(cint(limit) or 10, 50)),
-    )
+    if not is_admin():
+        filters["started_by"] = frappe.session.user
+    rows = frappe.get_all("S3 Vault Operation", filters=filters, fields=["name"],
+                          order_by="creation desc", limit=max(1, min(cint(limit) or 10, 50)))
     return [operation_as_dict(frappe.get_doc("S3 Vault Operation", row.name)) for row in rows]
 
 
@@ -704,35 +622,90 @@ def get_operation_result_url(operation_name: str):
         frappe.throw(_("This operation has no available result file."))
     if doc.result_expires_on and now_datetime() > frappe.utils.get_datetime(doc.result_expires_on):
         frappe.throw(_("The generated archive has expired."))
-
-    bucket = get_bucket(doc.connection)
+    bucket = get_bucket(doc.connection, check_permission=False)
     client = get_s3_client(bucket)
     expiry = min(url_expiry(), 900)
     filename = safe_file_name(doc.result_file_name or basename(doc.result_key))
-    url = client.generate_presigned_url(
-        "get_object",
-        Params={
-            "Bucket": bucket.bucket_name,
-            "Key": full_key(bucket, doc.result_key),
-            "ResponseContentDisposition": f"attachment; filename*=UTF-8''{quote(filename)}",
-        },
-        ExpiresIn=expiry,
-    )
-    manager_log(
-        action="Download",
-        bucket=bucket,
-        object_key=full_key(bucket, doc.result_key),
-        user=frappe.session.user,
-        message=f"operation={doc.name}",
-    )
+    url = client.generate_presigned_url("get_object", Params={
+        "Bucket": bucket.bucket_name, "Key": full_key(bucket, doc.result_key),
+        "ResponseContentDisposition": f"attachment; filename*=UTF-8''{quote(filename)}",
+    }, ExpiresIn=expiry)
+    manager_log(action="Download", bucket=bucket, object_key=full_key(bucket, doc.result_key),
+                user=frappe.session.user, message=f"operation={doc.name}")
     return {"url": url, "expires_in": expiry, "filename": filename}
 
 
 @frappe.whitelist()
 def open_linked_record(connection: str, key: str):
-    bucket = get_bucket(connection)
-    storage_key = full_key(bucket, normalize_relative_path(key))
-    linked = first_linked_record(bucket, storage_key)
-    if not linked:
-        return None
-    return _linked_payload(linked)
+    relative_object_key = normalize_relative_path(key)
+    require_access(connection, relative_object_key, "browse")
+    bucket = get_bucket(connection, check_permission=False)
+    linked = first_linked_record(bucket, full_key(bucket, relative_object_key))
+    return _linked_payload(linked) if linked else None
+
+
+
+@frappe.whitelist()
+def get_access_context(connection: str, prefix: str | None = ""):
+    relative_prefix = normalize_relative_path(prefix, folder=bool(prefix))
+    require_access(connection, relative_prefix, "browse")
+    return {
+        "connection": connection,
+        "prefix": relative_prefix,
+        "access_roots": accessible_roots(connection),
+        "capabilities": capabilities_for(connection, relative_prefix),
+    }
+
+
+@frappe.whitelist()
+def list_tree_children(connection: str, prefix: str | None = ""):
+    result = list_folders(connection, prefix)
+    return result
+
+
+@frappe.whitelist()
+def cancel_operation(operation_name: str):
+    doc = _operation_doc(operation_name)
+    path = doc.source_key or accessible_roots(doc.connection)[0]
+    require_access(doc.connection, path, "operation_cancel")
+    if doc.status not in {"Queued", "Running"}:
+        frappe.throw(_("Only queued or running operations can be cancelled."))
+    frappe.db.set_value(
+        "S3 Vault Operation", doc.name,
+        {"cancellation_requested": 1, "message": _("Cancellation requested")},
+        update_modified=True,
+    )
+    doc.reload()
+    return operation_as_dict(doc)
+
+
+@frappe.whitelist()
+def retry_operation(operation_name: str):
+    doc = _operation_doc(operation_name)
+    path = doc.source_key or accessible_roots(doc.connection)[0]
+    require_access(doc.connection, path, "operation_retry")
+    if doc.status not in {"Failed", "Partially Completed", "Cancelled"}:
+        frappe.throw(_("Only failed, partially completed, or cancelled operations can be retried."))
+    payload = frappe.parse_json(doc.operation_payload or "{}") or {}
+    _authorize_background_request(
+        doc.connection,
+        doc.operation_type,
+        payload.get("items") or [],
+        doc.source_key or "",
+        payload.get("destination_prefix") or doc.destination_key or "",
+    )
+    bucket = get_bucket(doc.connection, check_permission=False)
+    new_operation = _create_operation(
+        operation_type=doc.operation_type,
+        bucket=bucket,
+        source_key=doc.source_key,
+        destination_key=doc.destination_key,
+        payload=payload,
+    )
+    frappe.db.set_value(
+        "S3 Vault Operation", new_operation["name"],
+        {"retry_of": doc.name, "retry_count": cint(getattr(doc, "retry_count", 0)) + 1},
+        update_modified=True,
+    )
+    new_doc = frappe.get_doc("S3 Vault Operation", new_operation["name"])
+    return operation_as_dict(new_doc)

@@ -1,0 +1,234 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "hash",
+  "creation": "2026-07-13 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "field_order": [
+    "upload_section",
+    "status",
+    "connection",
+    "bucket_name",
+    "column_break_upload",
+    "upload_user",
+    "file_name",
+    "file_size",
+    "path_section",
+    "relative_key",
+    "object_key",
+    "content_type",
+    "file_fingerprint",
+    "multipart_section",
+    "upload_id",
+    "part_size",
+    "total_parts",
+    "uploaded_parts",
+    "uploaded_size",
+    "completed_parts_json",
+    "timing_section",
+    "initiated_on",
+    "expires_on",
+    "completed_on",
+    "error_message"
+  ],
+  "fields": [
+    {
+      "fieldname": "upload_section",
+      "fieldtype": "Section Break",
+      "label": "Multipart Upload"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Status",
+      "options": "Initiated\nUploading\nCompleted\nAborted\nExpired\nFailed",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "connection",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "S3 Connection",
+      "options": "S3 Vault Bucket",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "bucket_name",
+      "fieldtype": "Data",
+      "label": "Bucket Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_upload",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "upload_user",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Upload User",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "file_name",
+      "fieldtype": "Small Text",
+      "in_list_view": 1,
+      "label": "File Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "file_size",
+      "fieldtype": "Data",
+      "label": "File Size (Bytes)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "path_section",
+      "fieldtype": "Section Break",
+      "label": "Object Path"
+    },
+    {
+      "fieldname": "relative_key",
+      "fieldtype": "Small Text",
+      "label": "Relative Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "object_key",
+      "fieldtype": "Small Text",
+      "label": "Storage Object Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "content_type",
+      "fieldtype": "Data",
+      "label": "Content Type",
+      "read_only": 1
+    },
+    {
+      "fieldname": "file_fingerprint",
+      "fieldtype": "Small Text",
+      "label": "File Fingerprint",
+      "read_only": 1
+    },
+    {
+      "fieldname": "multipart_section",
+      "fieldtype": "Section Break",
+      "label": "Multipart State"
+    },
+    {
+      "fieldname": "upload_id",
+      "fieldtype": "Small Text",
+      "label": "S3 Upload ID",
+      "read_only": 1
+    },
+    {
+      "fieldname": "part_size",
+      "fieldtype": "Int",
+      "label": "Part Size (Bytes)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_parts",
+      "fieldtype": "Int",
+      "label": "Total Parts",
+      "read_only": 1
+    },
+    {
+      "fieldname": "uploaded_parts",
+      "fieldtype": "Int",
+      "label": "Uploaded Parts",
+      "read_only": 1
+    },
+    {
+      "fieldname": "uploaded_size",
+      "fieldtype": "Data",
+      "label": "Uploaded Bytes",
+      "read_only": 1
+    },
+    {
+      "fieldname": "completed_parts_json",
+      "fieldtype": "Code",
+      "hidden": 1,
+      "label": "Completed Parts",
+      "options": "JSON",
+      "read_only": 1
+    },
+    {
+      "fieldname": "timing_section",
+      "fieldtype": "Section Break",
+      "label": "Timing"
+    },
+    {
+      "fieldname": "initiated_on",
+      "fieldtype": "Datetime",
+      "label": "Initiated On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "expires_on",
+      "fieldtype": "Datetime",
+      "label": "Expires On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "completed_on",
+      "fieldtype": "Datetime",
+      "label": "Completed On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "error_message",
+      "fieldtype": "Long Text",
+      "label": "Error Message",
+      "read_only": 1
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-07-13 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Multipart Upload",
+  "naming_rule": "Random",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Administrator",
+      "delete": 1,
+      "export": 1
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "delete": 1,
+      "export": 1
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Uploader"
+    },
+    {
+      "read": 1,
+      "report": 1,
+      "role": "S3 Vault Manager"
+    }
+  ],
+  "quick_entry": 0,
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1,
+  "search_fields": "file_name,relative_key,upload_user,status"
+}

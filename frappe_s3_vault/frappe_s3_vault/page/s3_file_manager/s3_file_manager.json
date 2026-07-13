@@ -14,6 +14,18 @@
   "roles": [
     {
       "role": "System Manager"
+    },
+    {
+      "role": "S3 Vault Viewer"
+    },
+    {
+      "role": "S3 Vault Uploader"
+    },
+    {
+      "role": "S3 Vault Manager"
+    },
+    {
+      "role": "S3 Vault Administrator"
     }
   ],
   "script": null,
