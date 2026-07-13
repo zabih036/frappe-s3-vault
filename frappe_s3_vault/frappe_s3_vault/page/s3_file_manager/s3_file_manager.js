@@ -25,6 +25,7 @@ class S3FileManager {
 		this.operations_visible = false;
 		this.operation_poll_timer = null;
 		this.initialized = false;
+		this.recent_operation_limit = 4;
 
 		this.page = frappe.ui.make_app_page({
 			parent: wrapper,
@@ -48,6 +49,17 @@ class S3FileManager {
 		this.$root = $(`
 			<div class="s3fm">
 				<div class="s3fm-toolbar">
+					<div class="s3fm-toolbar-intro">
+						<div class="s3fm-toolbar-brand">
+							<div class="s3fm-toolbar-brand-icon">${frappe.utils.icon("folder", "md")}</div>
+							<div>
+								<div class="s3fm-toolbar-kicker">${__("Object Explorer")}</div>
+								<div class="s3fm-toolbar-subtitle">${__("Browse, upload, organize, and protect files across your S3 connections.")}</div>
+							</div>
+						</div>
+						<div class="s3fm-secure-badge"><span></span>${__("Secure workspace")}</div>
+					</div>
+
 					<div class="s3fm-connection-wrap">
 						<label>${__("S3 Connection")}</label>
 						<div class="s3fm-connection-control"></div>
@@ -125,17 +137,24 @@ class S3FileManager {
 
 				<div class="s3fm-operations-panel hidden">
 					<div class="s3fm-operations-header">
-						<div>
-							<div class="s3fm-operations-title">${__("Background Operations")}</div>
-							<div class="text-muted">${__("Folder, bulk, and ZIP jobs run on the long worker queue.")}</div>
+						<div class="s3fm-operations-heading">
+							<div class="s3fm-operations-heading-icon">${frappe.utils.icon("activity", "md")}</div>
+							<div>
+								<div class="s3fm-operations-title">${__("Recent Operations")}</div>
+								<div class="s3fm-operations-subtitle">${__("Latest four jobs for the selected connection. Open the full list for older activity.")}</div>
+							</div>
 						</div>
 						<div class="s3fm-operations-header-actions">
-							<button class="btn btn-default btn-sm s3fm-open-all-operations">${__("Open All")}</button>
-							<button class="btn btn-default btn-sm s3fm-refresh-operations">${__("Refresh")}</button>
-							<button class="btn btn-default btn-sm s3fm-close-operations">${__("Close")}</button>
+							<button class="btn btn-primary btn-sm s3fm-open-all-operations">${frappe.utils.icon("activity", "sm")} ${__("View All Operations")}</button>
+							<button class="btn btn-default btn-sm s3fm-refresh-operations" title="${__("Refresh operations")}">${frappe.utils.icon("refresh", "sm")}</button>
+							<button class="btn btn-default btn-sm s3fm-close-operations" title="${__("Close")}">×</button>
 						</div>
 					</div>
 					<div class="s3fm-operation-list"></div>
+					<div class="s3fm-operations-footer">
+						<span>${__("Showing the four most recent operations")}</span>
+						<button class="btn btn-link btn-sm s3fm-open-all-operations">${__("Open complete history")} →</button>
+					</div>
 				</div>
 
 				<div class="s3fm-shell">
@@ -274,6 +293,7 @@ class S3FileManager {
 			const index = this.operations.findIndex((row) => row.name === operation.name);
 			if (index >= 0) this.operations[index] = operation;
 			else this.operations.unshift(operation);
+			this.operations = this.operations.slice(0, this.recent_operation_limit || 4);
 			this.render_operations();
 			this.update_operation_badge();
 			if (["Completed", "Partially Completed", "Failed"].includes(operation.status)) {
@@ -875,6 +895,7 @@ class S3FileManager {
 		const result = await this.call("create_background_operation", { connection: this.connection, ...args }, true);
 		frappe.show_alert({ message: __("Background operation queued"), indicator: "blue" });
 		this.operations.unshift(result);
+		this.operations = this.operations.slice(0, this.recent_operation_limit || 4);
 		this.toggle_operations(true);
 		this.render_operations();
 		this.start_operation_polling();
@@ -922,7 +943,7 @@ class S3FileManager {
 	async load_recent_operations(show_errors = true) {
 		if (!this.connection) return;
 		try {
-			this.operations = await this.call("get_recent_operations", { connection: this.connection, limit: 12 });
+			this.operations = await this.call("get_recent_operations", { connection: this.connection, limit: this.recent_operation_limit || 4 });
 			this.render_operations();
 			this.update_operation_badge();
 			this.start_operation_polling();
@@ -1137,18 +1158,18 @@ class S3FileManager {
 			</div>
 		`);
 
-		this.$root.find(".s3fm-actions").prepend(`
+		this.$root.find(".s3fm-actions").append(`
+			<button class="btn btn-default s3fm-upload-folder" title="${__("Upload a complete folder")}">
+				${frappe.utils.icon("folder", "sm")} ${__("Upload Folder")}
+			</button>
+			<button class="btn btn-default s3fm-resumable-uploads" title="${__("Resumable uploads")}">
+				${frappe.utils.icon("upload", "sm")} ${__("Uploads")}
+			</button>
 			<button class="btn btn-default s3fm-dashboard" title="${__("Storage dashboard")}">
 				📊 ${__("Dashboard")}
 			</button>
 			<button class="btn btn-default s3fm-versions" title="${__("Object versions")}">
 				🕘 ${__("Versions")}
-			</button>
-			<button class="btn btn-default s3fm-resumable-uploads" title="${__("Resumable uploads")}">
-				${frappe.utils.icon("upload", "sm")} ${__("Uploads")}
-			</button>
-			<button class="btn btn-default s3fm-upload-folder" title="${__("Upload a complete folder")}">
-				${frappe.utils.icon("folder", "sm")} ${__("Upload Folder")}
 			</button>
 			<input type="file" class="s3fm-folder-input" webkitdirectory directory multiple hidden>
 		`);
@@ -1257,6 +1278,7 @@ class S3FileManager {
 		$select.html(this.access_roots.map((root) => `<option value="${this.escape(root)}">${this.escape(root || "/")}</option>`).join(""));
 		$select.val(this.active_root);
 		$control.toggleClass("hidden", this.access_roots.length <= 1);
+		this.$root.find(".s3fm-toolbar").toggleClass("s3fm-has-access-roots", this.access_roots.length > 1);
 		this.connection_control.df.get_query = () => ({ filters: { name: ["in", this.connection_rows.map((item) => item.name)] } });
 	};
 
@@ -1603,16 +1625,86 @@ class S3FileManager {
 	const p2_render_operations = S3FileManager.prototype.render_operations;
 	S3FileManager.prototype.render_operations = function () {
 		const $list = this.$root.find(".s3fm-operation-list");
-		if (!this.operations.length) { $list.html(`<div class="s3fm-operation-empty text-muted">${__("No operations for this connection yet.")}</div>`); return; }
-		$list.html(this.operations.map((operation) => {
+		const operations = (this.operations || []).slice(0, this.recent_operation_limit || 4);
+		if (!operations.length) {
+			$list.html(`
+				<div class="s3fm-operation-empty">
+					<div class="s3fm-operation-empty-icon">${frappe.utils.icon("activity", "lg")}</div>
+					<strong>${__("No recent operations")}</strong>
+					<span>${__("Folder, bulk, ZIP, and indexing jobs will appear here.")}</span>
+				</div>
+			`);
+			return;
+		}
+
+		const operation_icon = (operation_type) => {
+			const value = String(operation_type || "").toLowerCase();
+			if (value.includes("delete")) return "🗑️";
+			if (value.includes("download") || value.includes("zip")) return "📦";
+			if (value.includes("copy")) return "📑";
+			if (value.includes("move") || value.includes("rename")) return "↗️";
+			if (value.includes("index") || value.includes("rebuild")) return "🔎";
+			if (value.includes("upload")) return "☁️";
+			return "⚙️";
+		};
+
+		$list.html(operations.map((operation) => {
 			const progress = Math.max(0, Math.min(Number(operation.progress) || 0, 100));
 			const status_class = String(operation.status || "").toLowerCase().replace(/\s+/g, "-");
-			const counts = operation.total_objects ? `${operation.processed_objects || 0} / ${operation.total_objects} ${__("objects")}` : __("Preparing");
-			const download = operation.status === "Completed" && operation.result_key && !operation.result_deleted ? `<button class="btn btn-primary btn-xs" data-operation-download="${operation.name}">${__("Download")}</button>` : "";
-			const cancel = ["Queued", "Running"].includes(operation.status) && this.capabilities.operation_cancel ? `<button class="btn btn-default btn-xs" data-operation-cancel="${operation.name}">${operation.cancellation_requested ? __("Cancelling...") : __("Cancel")}</button>` : "";
-			const retry = ["Failed", "Partially Completed", "Cancelled"].includes(operation.status) && this.capabilities.operation_retry ? `<button class="btn btn-default btn-xs" data-operation-retry="${operation.name}">${__("Retry")}</button>` : "";
-			const error = operation.error_message ? `<div class="s3fm-operation-error">${this.escape(operation.error_message)}</div>` : "";
-			return `<div class="s3fm-operation-card"><div class="s3fm-operation-top"><div><strong>${this.escape(operation.operation_type)}</strong><span class="s3fm-status s3fm-status-${status_class}">${this.escape(operation.status)}</span></div><div class="s3fm-operation-card-actions">${download}${cancel}${retry}<button class="btn btn-default btn-xs" data-operation-open="${operation.name}">${__("Details")}</button></div></div><div class="s3fm-operation-path">${this.escape(operation.source_key || "")} ${operation.destination_key ? `→ ${this.escape(operation.destination_key)}` : ""}</div><div class="progress s3fm-operation-progress"><div class="progress-bar" style="width:${progress}%">${Math.round(progress)}%</div></div><div class="s3fm-operation-meta"><span>${counts}</span><span>${this.format_bytes(operation.processed_size || 0)} / ${this.format_bytes(operation.total_size || 0)}</span><span>${this.escape(operation.message || "")}</span></div>${error}</div>`;
+			const counts = operation.total_objects
+				? `${operation.processed_objects || 0} / ${operation.total_objects} ${__("objects")}`
+				: __("Preparing");
+			const size_text = operation.total_size
+				? `${this.format_bytes(operation.processed_size || 0)} / ${this.format_bytes(operation.total_size || 0)}`
+				: "";
+			const timestamp = operation.started_on || operation.creation || operation.modified;
+			const time_text = timestamp ? this.format_datetime(timestamp) : "";
+			const download = operation.status === "Completed" && operation.result_key && !operation.result_deleted
+				? `<button class="btn btn-primary btn-xs" data-operation-download="${operation.name}">↓ ${__("Download")}</button>`
+				: "";
+			const cancel = ["Queued", "Running"].includes(operation.status) && this.capabilities.operation_cancel
+				? `<button class="btn btn-default btn-xs" data-operation-cancel="${operation.name}">${operation.cancellation_requested ? __("Cancelling...") : __("Cancel")}</button>`
+				: "";
+			const retry = ["Failed", "Partially Completed", "Cancelled"].includes(operation.status) && this.capabilities.operation_retry
+				? `<button class="btn btn-default btn-xs" data-operation-retry="${operation.name}">${frappe.utils.icon("refresh", "sm")} ${__("Retry")}</button>`
+				: "";
+			const error = operation.error_message
+				? `<div class="s3fm-operation-error">${this.escape(operation.error_message)}</div>`
+				: "";
+			const source = this.escape(operation.source_key || __("Connection root"));
+			const destination = operation.destination_key
+				? `<span class="s3fm-operation-arrow">→</span><span title="${this.escape(operation.destination_key)}">${this.escape(operation.destination_key)}</span>`
+				: "";
+
+			return `
+				<div class="s3fm-operation-card s3fm-operation-card-${status_class}">
+					<div class="s3fm-operation-card-head">
+						<div class="s3fm-operation-identity">
+							<div class="s3fm-operation-icon">${operation_icon(operation.operation_type)}</div>
+							<div>
+								<div class="s3fm-operation-name">${this.escape(operation.operation_type)}</div>
+								<div class="s3fm-operation-time">${this.escape(time_text)}</div>
+							</div>
+						</div>
+						<span class="s3fm-status s3fm-status-${status_class}"><span class="s3fm-status-dot"></span>${this.escape(operation.status)}</span>
+					</div>
+					<div class="s3fm-operation-path"><span title="${source}">${source}</span>${destination}</div>
+					<div class="s3fm-operation-progress-line">
+						<div class="s3fm-operation-progress-track"><span style="width:${progress}%"></span></div>
+						<strong>${Math.round(progress)}%</strong>
+					</div>
+					<div class="s3fm-operation-meta">
+						<span>• ${counts}</span>
+						${size_text ? `<span>◫ ${size_text}</span>` : ""}
+					</div>
+					${operation.message ? `<div class="s3fm-operation-message">${this.escape(operation.message)}</div>` : ""}
+					${error}
+					<div class="s3fm-operation-card-actions">
+						${download}${cancel}${retry}
+						<button class="btn btn-default btn-xs" data-operation-open="${operation.name}">${__("Details")} →</button>
+					</div>
+				</div>
+			`;
 		}).join(""));
 	};
 
