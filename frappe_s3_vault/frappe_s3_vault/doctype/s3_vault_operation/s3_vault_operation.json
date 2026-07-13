@@ -1,0 +1,269 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "hash",
+  "creation": "2026-07-13 00:00:00.000000",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "field_order": [
+    "operation_section",
+    "operation_type",
+    "status",
+    "progress",
+    "column_break_operation",
+    "connection",
+    "bucket_name",
+    "started_by",
+    "path_section",
+    "source_key",
+    "destination_key",
+    "result_key",
+    "result_file_name",
+    "progress_section",
+    "total_objects",
+    "processed_objects",
+    "failed_objects",
+    "column_break_progress",
+    "total_size",
+    "processed_size",
+    "message",
+    "timing_section",
+    "started_on",
+    "completed_on",
+    "result_expires_on",
+    "column_break_timing",
+    "result_deleted",
+    "background_job_id",
+    "details_section",
+    "error_message",
+    "operation_payload"
+  ],
+  "fields": [
+    {
+      "fieldname": "operation_section",
+      "fieldtype": "Section Break",
+      "label": "Operation"
+    },
+    {
+      "fieldname": "operation_type",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Operation Type",
+      "options": "Bulk Copy\nBulk Move\nBulk Delete\nRename Folder\nCopy Folder\nMove Folder\nDelete Folder\nDownload Folder ZIP\nBulk Download ZIP",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "default": "Queued",
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Status",
+      "options": "Queued\nRunning\nCompleted\nPartially Completed\nFailed\nCancelled",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "default": "0",
+      "fieldname": "progress",
+      "fieldtype": "Percent",
+      "in_list_view": 1,
+      "label": "Progress",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_operation",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "connection",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "S3 Connection",
+      "options": "S3 Vault Bucket",
+      "read_only": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "bucket_name",
+      "fieldtype": "Data",
+      "label": "Bucket Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "started_by",
+      "fieldtype": "Link",
+      "label": "Started By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "path_section",
+      "fieldtype": "Section Break",
+      "label": "Paths"
+    },
+    {
+      "fieldname": "source_key",
+      "fieldtype": "Small Text",
+      "label": "Source Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "destination_key",
+      "fieldtype": "Small Text",
+      "label": "Destination Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_key",
+      "fieldtype": "Small Text",
+      "label": "Result Object Key",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_file_name",
+      "fieldtype": "Data",
+      "label": "Result File Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "progress_section",
+      "fieldtype": "Section Break",
+      "label": "Progress Details"
+    },
+    {
+      "default": "0",
+      "fieldname": "total_objects",
+      "fieldtype": "Int",
+      "label": "Total Objects",
+      "read_only": 1
+    },
+    {
+      "default": "0",
+      "fieldname": "processed_objects",
+      "fieldtype": "Int",
+      "label": "Processed Objects",
+      "read_only": 1
+    },
+    {
+      "default": "0",
+      "fieldname": "failed_objects",
+      "fieldtype": "Int",
+      "label": "Failed Objects",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_progress",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "0",
+      "fieldname": "total_size",
+      "fieldtype": "Data",
+      "label": "Total Bytes",
+      "read_only": 1
+    },
+    {
+      "default": "0",
+      "fieldname": "processed_size",
+      "fieldtype": "Data",
+      "label": "Processed Bytes",
+      "read_only": 1
+    },
+    {
+      "fieldname": "message",
+      "fieldtype": "Small Text",
+      "label": "Current Message",
+      "read_only": 1
+    },
+    {
+      "fieldname": "timing_section",
+      "fieldtype": "Section Break",
+      "label": "Timing and Result"
+    },
+    {
+      "fieldname": "started_on",
+      "fieldtype": "Datetime",
+      "label": "Started On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "completed_on",
+      "fieldtype": "Datetime",
+      "label": "Completed On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_expires_on",
+      "fieldtype": "Datetime",
+      "label": "Result Expires On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_timing",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "0",
+      "fieldname": "result_deleted",
+      "fieldtype": "Check",
+      "label": "Result Deleted",
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_id",
+      "fieldtype": "Data",
+      "label": "Background Job ID",
+      "read_only": 1
+    },
+    {
+      "fieldname": "details_section",
+      "fieldtype": "Section Break",
+      "label": "Technical Details"
+    },
+    {
+      "fieldname": "error_message",
+      "fieldtype": "Long Text",
+      "label": "Error Message",
+      "read_only": 1
+    },
+    {
+      "fieldname": "operation_payload",
+      "fieldtype": "Code",
+      "hidden": 1,
+      "label": "Operation Payload",
+      "options": "JSON",
+      "read_only": 1
+    }
+  ],
+  "grid_page_length": 50,
+  "index_web_pages_for_search": 0,
+  "links": [],
+  "modified": "2026-07-13 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Frappe S3 Vault",
+  "name": "S3 Vault Operation",
+  "naming_rule": "Random",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 0,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 0
+    }
+  ],
+  "quick_entry": 0,
+  "search_fields": "operation_type,status,connection,source_key,destination_key",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "states": [],
+  "track_changes": 1
+}
