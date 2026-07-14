@@ -1507,3 +1507,284 @@
 		min-height: 0;
 	}
 }
+
+
+/* -----------------------------------------------------------------
+   Search and toolbar refinement patch
+   - removes button-style search flow
+   - keeps all functionality
+   - places search on the same horizontal row as connection
+   - softens the backgrounds
+------------------------------------------------------------------ */
+
+.s3fm-toolbar {
+	border-radius: 18px;
+	background: linear-gradient(180deg, color-mix(in srgb, var(--s3fm-bg) 98%, #ffffff), color-mix(in srgb, var(--s3fm-bg) 94%, var(--s3fm-muted-bg)));
+	box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+	overflow: hidden;
+}
+
+.s3fm-toolbar-intro {
+	padding: 16px 20px 12px;
+	border-bottom: 1px solid color-mix(in srgb, var(--s3fm-border) 72%, transparent);
+	background: linear-gradient(180deg, color-mix(in srgb, var(--s3fm-bg) 97%, #fff), color-mix(in srgb, var(--primary) 3%, #fff));
+}
+
+.s3fm-toolbar-brand-icon {
+	background: linear-gradient(145deg, color-mix(in srgb, var(--s3fm-bg) 96%, #fff), color-mix(in srgb, var(--primary) 5%, #fff));
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.s3fm-secure-badge {
+	background: color-mix(in srgb, var(--green-500, #249f64) 10%, #ffffff);
+}
+
+.s3fm-connection-wrap,
+.s3fm-access-root-wrap,
+.s3fm-search-wrap,
+.s3fm-page-size-wrap {
+	padding-top: 4px;
+}
+
+.s3fm-connection-wrap {
+	grid-column: 1;
+	padding-left: 20px;
+}
+
+.s3fm-search-wrap {
+	grid-column: 2 / 4;
+}
+
+.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap {
+	grid-column: 2;
+}
+
+.s3fm-access-root-wrap:not(.hidden) {
+	grid-column: 3;
+}
+
+.s3fm-page-size-wrap {
+	grid-column: 4;
+	padding-right: 20px;
+}
+
+.s3fm-search-wrap .s3fm-search {
+	margin-bottom: 8px;
+}
+
+.s3fm-search-options {
+	display: grid;
+	grid-template-columns: minmax(180px, 240px);
+	gap: 8px;
+	margin-top: 0;
+}
+
+.s3fm-search-options .s3fm-search-run {
+	display: none !important;
+}
+
+.s3fm-actions {
+	margin-top: 6px;
+	padding: 14px 18px 18px;
+	border-top: 1px solid color-mix(in srgb, var(--s3fm-border) 72%, transparent);
+	background: color-mix(in srgb, var(--s3fm-bg) 98%, #fff);
+}
+
+.s3fm-connection-summary,
+.s3fm-breadcrumb,
+.s3fm-bulk-toolbar,
+.s3fm-upload-status,
+.s3fm-operations-panel,
+.s3fm-shell {
+	border-radius: 16px;
+	background: color-mix(in srgb, var(--s3fm-bg) 99%, #fff);
+	box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
+}
+
+.s3fm-connection-summary {
+	padding: 12px;
+}
+
+.s3fm-sidebar {
+	background: color-mix(in srgb, var(--s3fm-muted-bg) 38%, #fff);
+}
+
+.s3fm-table thead th {
+	background: color-mix(in srgb, var(--s3fm-muted-bg) 66%, #fff);
+}
+
+.s3fm-row:hover {
+	background: color-mix(in srgb, var(--primary) 4%, #fff);
+}
+
+@media (max-width: 1180px) {
+	.s3fm-toolbar,
+	.s3fm-toolbar.s3fm-has-access-roots {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.s3fm-connection-wrap,
+	.s3fm-access-root-wrap:not(.hidden),
+	.s3fm-search-wrap,
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap,
+	.s3fm-page-size-wrap {
+		grid-column: auto;
+		padding-inline: 18px;
+	}
+
+	.s3fm-search-wrap,
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap {
+		grid-column: 1 / -1 !important;
+	}
+
+	.s3fm-search-options {
+		grid-template-columns: minmax(180px, 260px);
+	}
+}
+
+@media (max-width: 760px) {
+	.s3fm-connection-wrap,
+	.s3fm-access-root-wrap:not(.hidden),
+	.s3fm-search-wrap,
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap,
+	.s3fm-page-size-wrap {
+		padding-inline: 14px;
+	}
+
+	.s3fm-search-options {
+		grid-template-columns: 1fr;
+	}
+}
+
+
+/* ================================================================
+   Single-line connection and search layout
+   UI-only override. No functionality is changed.
+================================================================ */
+
+@media (min-width: 1181px) {
+	.s3fm-toolbar {
+		grid-template-columns:
+			minmax(250px, 320px)
+			minmax(500px, 690px)
+			96px
+			minmax(0, 1fr);
+		column-gap: 16px;
+		align-items: end;
+	}
+
+	.s3fm-connection-wrap {
+		grid-column: 1;
+		padding-left: 20px;
+	}
+
+	.s3fm-search-wrap {
+		grid-column: 2;
+		display: grid;
+		grid-template-columns: minmax(280px, 460px) 190px;
+		grid-template-areas:
+			"search-label search-label"
+			"search-input search-scope";
+		column-gap: 10px;
+		row-gap: 7px;
+		max-width: 660px;
+		align-items: end;
+	}
+
+	.s3fm-search-wrap > label {
+		grid-area: search-label;
+		margin-bottom: 0;
+	}
+
+	.s3fm-search-wrap > .s3fm-search {
+		grid-area: search-input;
+		width: 100%;
+		min-width: 0;
+		margin: 0;
+	}
+
+	.s3fm-search-wrap > .s3fm-search-options {
+		grid-area: search-scope;
+		display: block;
+		width: 190px;
+		margin: 0;
+	}
+
+	.s3fm-search-options .s3fm-search-scope {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.s3fm-page-size-wrap {
+		grid-column: 3;
+		width: 96px;
+		padding-right: 0;
+	}
+
+	.s3fm-page-size-wrap .s3fm-page-size {
+		width: 96px;
+	}
+
+	/* When an Access Root selector is visible, keep everything on one row. */
+	.s3fm-toolbar.s3fm-has-access-roots {
+		grid-template-columns:
+			minmax(220px, 270px)
+			minmax(210px, 260px)
+			minmax(470px, 620px)
+			96px
+			minmax(0, 1fr);
+	}
+
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-connection-wrap {
+		grid-column: 1;
+	}
+
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-access-root-wrap:not(.hidden) {
+		grid-column: 2;
+	}
+
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap {
+		grid-column: 3;
+		grid-template-columns: minmax(260px, 410px) 180px;
+		max-width: 600px;
+	}
+
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap > .s3fm-search-options {
+		width: 180px;
+	}
+
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-page-size-wrap {
+		grid-column: 4;
+	}
+}
+
+/* Keep a clean two-row layout on medium screens. */
+@media (min-width: 761px) and (max-width: 1180px) {
+	.s3fm-search-wrap,
+	.s3fm-toolbar.s3fm-has-access-roots .s3fm-search-wrap {
+		display: grid;
+		grid-template-columns: minmax(260px, 1fr) 200px;
+		grid-template-areas:
+			"search-label search-label"
+			"search-input search-scope";
+		column-gap: 10px;
+		row-gap: 7px;
+	}
+
+	.s3fm-search-wrap > label {
+		grid-area: search-label;
+		margin-bottom: 0;
+	}
+
+	.s3fm-search-wrap > .s3fm-search {
+		grid-area: search-input;
+		margin: 0;
+	}
+
+	.s3fm-search-wrap > .s3fm-search-options {
+		grid-area: search-scope;
+		display: block;
+		width: 200px;
+		margin: 0;
+	}
+}

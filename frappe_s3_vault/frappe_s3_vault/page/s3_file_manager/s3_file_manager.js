@@ -229,7 +229,23 @@ class S3FileManager {
 		this.$root.on("click", ".s3fm-new-folder", () => this.show_new_folder_dialog());
 		this.$root.on("click", ".s3fm-upload", () => this.$root.find(".s3fm-file-input").trigger("click"));
 		this.$root.on("change", ".s3fm-file-input", (event) => this.upload_files(event.target.files));
-		this.$root.on("input", ".s3fm-search", () => this.render_items());
+		this.$root.on("input", ".s3fm-search", () => {
+			const scope = this.$root.find(".s3fm-search-scope").val();
+			if (this.phase3_enabled && scope === "index") {
+				this.global_search_start = 0;
+				clearTimeout(this.global_search_debounce);
+				const query = String(this.$root.find(".s3fm-search").val() || "").trim();
+				if (!query) {
+					this.global_search_active = false;
+					this.render_items();
+					return;
+				}
+				this.global_search_debounce = setTimeout(() => this.run_global_search(), 350);
+				return;
+			}
+			this.global_search_active = false;
+			this.render_items();
+		});
 		this.$root.on("change", ".s3fm-page-size", (event) => {
 			this.page_size = Number(event.target.value) || 100;
 			this.reset_pagination();
@@ -1133,6 +1149,7 @@ class S3FileManager {
 		this.global_search_total = 0;
 		this.tree_loaded = new Set();
 		this.multipart_active = new Map();
+		this.global_search_debounce = null;
 
 		this.inject_phase3_controls();
 		this.bind_phase3_events();
@@ -1154,7 +1171,6 @@ class S3FileManager {
 					<option value="page">${__("Current page")}</option>
 					<option value="index">${__("Entire indexed bucket")}</option>
 				</select>
-				<button class="btn btn-default s3fm-search-run">${__("Search")}</button>
 			</div>
 		`);
 
@@ -1196,19 +1212,23 @@ class S3FileManager {
 		});
 		this.$root.on("change", ".s3fm-search-scope", () => {
 			this.global_search_start = 0;
-			if (this.$root.find(".s3fm-search-scope").val() === "page") {
+			clearTimeout(this.global_search_debounce);
+			const scope = this.$root.find(".s3fm-search-scope").val();
+			const query = String(this.$root.find(".s3fm-search").val() || "").trim();
+			if (scope === "page") {
 				this.global_search_active = false;
-				this.load_current_folder();
+				this.render_items();
+				return;
 			}
-		});
-		this.$root.on("click", ".s3fm-search-run", () => {
-			if (this.$root.find(".s3fm-search-scope").val() === "index") this.run_global_search();
-			else this.render_items();
+			if (query) {
+				this.run_global_search();
+			}
 		});
 		this.$root.on("keydown", ".s3fm-search", (event) => {
 			if (event.key === "Enter" && this.$root.find(".s3fm-search-scope").val() === "index") {
 				event.preventDefault();
 				this.global_search_start = 0;
+				clearTimeout(this.global_search_debounce);
 				this.run_global_search();
 			}
 		});
